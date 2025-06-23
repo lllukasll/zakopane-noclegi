@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals & Deep Forest Green -->
     <!-- Application Structure Plan: A single-page dashboard designed for decision-making. The structure prioritizes user interaction over mirroring the source report's linear flow. It consists of: 1. A global navigation bar for quick scrolling. 2. A powerful control panel with sorting and filtering options (by price, distance, amenities, availability), which is the primary interaction hub. 3. An interactive grid of "offer cards" that dynamically updates based on user selections, presenting key information concisely. 4. A visualization section with bar charts for at-a-glance comparison of price and location trade-offs. 5. A map visualization section showing accommodation locations. 6. A final summary and recommendations section to guide the user's choice. This task-oriented design empowers the user to explore the data according to their personal priorities (e.g., "show me the cheapest available options with a jacuzzi"), making the complex data from the report easily digestible and comparable. -->
-    <!-- Visualization & Content Choices: The core of the application is the transformation of static report entries into interactive elements. Report Info: Each accommodation offer. Goal: Compare options based on multiple criteria. Viz/Presentation Method: An interactive card grid (HTML/Tailwind/JS) including a "Pokaż Konwersację" button that opens a modal displaying the chat transcript. Interaction: Users can filter and sort the cards. Clicking the button opens a fullscreen modal for reading chat content. Justification: Cards are more flexible and mobile-friendly than a static table, allowing for a clearer presentation of varied information. Chat transcripts provide direct context for data. Report Info: Price and Distance data. Goal: Provide a high-level visual summary of key trade-offs. Viz/Presentation Method: Two separate bar charts (Chart.js/Canvas). Interaction: Tooltips on hover provide exact values. Justification: Bar charts are ideal for comparing discrete values across different categories, making the cost-vs-location dilemma immediately apparent. Report Info: Geographic locations of accommodations. Goal: Provide visual context of proximity to Krupówki and other points. Viz/Presentation Method: Interactive Map (Leaflet.js/Canvas-based tiles). Interaction: Users can pan, zoom, and click markers for info. Justification: A map is essential for understanding spatial relationships and travel implications, directly addressing the user's need for location comparison. All interactions are handled by vanilla JavaScript, ensuring a lightweight and fast experience. -->
+    <!-- Visualization & Content Choices: The core of the application is the transformation of static report entries into interactive elements. Report Info: Each accommodation offer. Goal: Compare options based on multiple criteria. Viz/Presentation Method: An interactive card grid (HTML/Tailwind/JS) including a "Pokaż Konwersację" button that opens a modal displaying the chat transcript, and image thumbnails for the property that open a fullscreen image modal. Interaction: Users can filter and sort the cards. Clicking buttons opens modals. Justification: Cards are more flexible and mobile-friendly than a static table, allowing for a clearer presentation of varied information. Chat transcripts and image previews provide direct context for data. Report Info: Price and Distance data. Goal: Provide a high-level visual summary of key trade-offs. Viz/Presentation Method: Two separate bar charts (Chart.js/Canvas). Interaction: Tooltips on hover provide exact values. Justification: Bar charts are ideal for comparing discrete values across different categories, making the cost-vs-location dilemma immediately apparent. Report Info: Geographic locations of accommodations. Goal: Provide visual context of proximity to Krupówki and other points. Viz/Presentation Method: Interactive Map (Leaflet.js/Canvas-based tiles). Interaction: Users can pan, zoom, and click markers for info. Justification: A map is essential for understanding spatial relationships and travel implications, directly addressing the user's need for location comparison. All interactions are handled by vanilla JavaScript, ensuring a lightweight and fast experience. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
@@ -83,6 +83,24 @@
             display: flex;
             flex-direction: column;
             gap: 1rem;
+        }
+        .modal-content-image {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+        }
+        .modal-caption {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 700px;
+            text-align: center;
+            color: #ccc;
+            padding: 10px 0;
+            height: 150px;
         }
         .modal-close {
             position: absolute;
@@ -240,13 +258,20 @@
 
     <!-- The Modal for chat conversation -->
     <div id="chatModal" class="modal fixed inset-0 flex items-center justify-center p-4" style="display: none;">
-        <span class="modal-close">&times;</span>
+        <span class="modal-close chat-close-btn">&times;</span>
         <div class="modal-content-chat">
             <h3 class="text-xl font-bold text-center mb-4 text-[#2F5233]" id="chatModalTitle"></h3>
             <div id="chatMessages" class="flex flex-col gap-3">
                 <!-- Chat messages will be dynamically inserted here -->
             </div>
         </div>
+    </div>
+
+    <!-- The Modal for image display -->
+    <div id="imageModal" class="modal fixed inset-0 flex items-center justify-center p-4" style="display: none;">
+        <span class="modal-close image-close-btn">&times;</span>
+        <img class="modal-content-image rounded-xl" id="modalImage">
+        <div id="modalCaption" class="modal-caption text-center text-white text-lg mt-4"></div>
     </div>
 
 <!-- Leaflet JavaScript -->
@@ -272,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Tak jest dostepny' },
             { sender: 'user', message: 'W jakiej cenie?' },
             { sender: 'owner', message: 'Cena w okresie wakacji 800zł doba w sumie 5600zł za 7 nocy' }
-        ], latitude: 49.355418, longitude: 19.819255 },
+        ], latitude: 49.355418, longitude: 19.819255, imageUrl: 'https://ireland.apollo.olxcdn.com/v1/files/j2ht0ox125ra2-PL/image;s=1000x700' },
         { id: 2, 
          title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy', 
          link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', 
@@ -290,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Witam mamy w drugim budynku bardzo piękne widoki cała panorama Tatr w Murzasichle strona www.utrebuni.pl' },
             { sender: 'user', message: 'W jakiej cenie?' },
             { sender: 'owner', message: 'Tak wynajem jest możliwy 70 zł od osoby więcej informacji pod numerem tel 728 739 080 pozdrawiam' }
-        ], latitude: 49.303838, longitude: 20.036490 },
+        ], latitude: 49.303838, longitude: 20.036490, imageUrl: 'https://ireland.apollo.olxcdn.com/v1/files/em33hdt8n4wf2-PL/image;s=1000x700' },
         { id: 3, 
          title: 'WAKACJE! BASEN, JACUZZI, sauna i parking - w cenie!', 
          link: 'https://www.olx.pl/d/oferta/wakacje-basen-jacuzzi-sauna-i-parking-w-cenie-CID1816-IDvrPqn.html', 
@@ -310,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Ewentualnie 2 apartamenty w tym samym budynku (byłyby to apartamenty 2 i 3)ale w terminie 27.07-01.08' },
             { sender: 'owner', message: 'Lub inna opcja Apartamenty 1 i 2- oddalone od siebie 10min spacerem, w terminie też 27.07-01.08' },
             { sender: 'owner', message: 'Apartament 1 (niski parter/przyziemie) - w cenie parking, basen, siłownia, jacuzzi, plac zabaw.  Apartament 2 (z tarasem) - z możliwością korzystania z sauny i groty solnej na wyłączność. Apartament 3 (z balkonem) - w cenie parking, altanka, plac zabaw.' }
-        ], latitude: 49.279274, longitude: 19.908976 }, 
+        ], latitude: 49.279274, longitude: 19.908976, imageUrl: 'https://ireland.apollo.olxcdn.com/v1/files/k031a55tu0gc3-PL/image;s=1000x700' }, 
         { id: 4, 
          title: 'Apartamenty Jaworowe Izby z balią z hydromasażem', 
          link: 'https://www.olx.pl/d/oferta/apartamenty-jaworowe-izby-z-balia-z-hydromasazem-CID1816-ID15UskW.html', 
@@ -330,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: '10 lat' },
             { sender: 'owner', message: 'To będzie 3100 zł, w cenie macie dwie sypialnie, dwie łazienki oraz oddzielna część jadalniana z aneksem kuchennym, w cenie również cały tydzień balia z hydromasażem, grill, plac zabaw (hamak, huśtawki, trampolina, bramki do piłki nożnej), PlayStation, WiFi, parking :)' },
             { sender: 'user', message: 'W razie pytań proszę o kontakt 506014406 :)' }
-         ], latitude: 49.2950, longitude: 19.9500 }, 
+         ], latitude: 49.2950, longitude: 19.9500, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Jaworowe+Izby' }, 
         { id: 5, 
          title: 'BOŻE CIAŁO!! Wakacje!! Ostatnie wolne pokoje!!', 
          link: 'https://www.olx.pl/d/oferta/boze-cialo-wakacje-ostatnie-wolne-pokoje-CID1816-IDKmdfh.html', 
@@ -347,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam, proszę o informację ile lat ma dziecko i ile pokoi Państwo potrzebują (ilu osobowe)' },
             { sender: 'owner', message: 'A najlepiej jakby Pan zadzwonił (660177174)' }
-        ], latitude: 49.2991, longitude: 19.9575 }, 
+        ], latitude: 49.2991, longitude: 19.9575, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Wolne+Pokoje' }, 
         { id: 6, 
          title: 'Domek góralski Wooden Tatra House', 
          link: 'https://www.olx.pl/d/oferta/domek-goralski-wooden-tatra-house-CID1816-ID16iUMx.html', 
@@ -362,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0)' },
             { sender: 'owner', message: 'Dzień dobry tak jest dostępny domek w tym terminie , kwota to 6230 zł pozdrawiam serdecznie' }
-        ], latitude: 49.282518, longitude: 19.912964 }, 
+        ], latitude: 49.282518, longitude: 19.912964, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Wooden+Tatra+House' }, 
         { id: 7, 
          title: 'Zakopane domek 12 osobowy wakacje święta ferie', 
          link: 'https://www.olx.pl/d/oferta/zakopane-domek-12-osobowy-wakacje-swieta-ferie-CID1816-IDL9SkM.html?reason=seller_profile', 
@@ -379,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Dla ilu osób potrzeba' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Termin wolny 800 zł za dobę' }
-        ], latitude: 49.2970, longitude: 19.9650 }, 
+        ], latitude: 49.2970, longitude: 19.9650, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+12+Osob' }, 
         { id: 8, 
          title: 'Domek k/ Zakopane, widoki na góry, jacuzzi prywatne', 
          link: 'https://www.olx.pl/d/oferta/domek-k-zakopane-widoki-na-gory-jacuzzi-prywatne-CID1816-IDFikla.html', 
@@ -395,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam serdecznie domek mamy wolny w terminie 30.07-03.08 Cena za dobę 850 zł, jeżeli chcieliby Państwo dodatkowo skorzystać z jacuzzi wtedy jest dodatkowa opłata 250 zł za dwa kolejne dni każdy następny po sobie dzień 50 zł - jacuzzi jest prywatne i nagrzewane tylko na życzenie Gości' }
-        ], latitude: 49.2800, longitude: 19.9200 }, 
+        ], latitude: 49.2800, longitude: 19.9200, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+Jacuzzi' }, 
         { id: 9, 
          title: 'Domek z jacuzzi, balia na wyłączność Termy Chochołów domek Zakopane', 
          link: 'https://www.olx.pl/d/oferta/domek-z-jacuzzi-balia-na-wylacznosc-termy-chocholow-domek-zakopane-CID1816-ID15S2Bp.html', 
@@ -410,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0).' },
             { sender: 'owner', message: 'Dzień dobry dziękuję za zainteresowanie naszą ofertą mamy wolny domek z 3 sypialniami 600 zł doba domek z klimatyzacja 400 m od term' }
-        ], latitude: 49.3360, longitude: 19.8660 }, 
+        ], latitude: 49.3360, longitude: 19.8660, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+Termy+Chocholow' }, 
         { id: 10, 
          title: 'Domki Zakopane domek w górach góry apartamenty noclegi kwatery pokoje', 
          link: 'https://www.olx.pl/d/oferta/domki-zakopane-domek-w-gorach-gory-apartamenty-noclegi-kwatery-pokoje-CID1816-IDJ3aCB.html', 
@@ -425,24 +450,24 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0).' },
             { sender: 'owner', message: 'Witamy. Na razie jest  wolny DOMEK GÓRALSKI z Bali np. od już 24 lipca ale do 1 sierpnia.  Cały domek na wyłączność dla Państwa. Cena 450 zł za noc, za wszystkie osoby (a nie za osobę), za cały jeden Domek do 8 osób, (spało też więcej osób). W pobliżu są TERMY - (baseny, gorące źródła, SPA), sklepy, karczmy, itd.  Obok jest Wyciąg - Stok Narciarki, restauracja i górki do zjeżdżania  dla dzieci. Domek w pełni wyposażony: Wi-Fi, TV, na zewnątrz grill, plac zabaw dla dzieci, kuchnia, łazienka. Parking na dwa samochody do domku - gratis. Akceptujemy pieski. Rezerwacja 40% wpłaty.  Adres: Gliczarów Górny ul. Fiśkowa Dolina 20, koło Zakopanego przy Bukowinie Tatrzańskiej.  W razie pytań i rezerwacji proszę o kontakt tel. 790,_303,_500.Po więcej zdjęć i informacji zapraszamy na stronę: www.Wgorachdomki.pl  Pozdrawiamy "Domki w Górach pod Wyciągiem"' }
-        ], latitude: 49.3490, longitude: 20.0800 }, 
+        ], latitude: 49.3490, longitude: 20.0800, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+Gliczarow' }, 
         { id: 11, 
          title: 'Pokoje noclegi Zakopane, apartamenty', 
          link: 'https://www.olx.pl/d/oferta/pokoje-noclegi-zakopane-apartamenty-CID1816-ID15BqqL.html', 
          totalPrice: 3843, 
-         availability: 'Brak Danych', 
+         availability: 'Dostępny', 
          status: 'Pełna dostępność i cena potwierdzona.', 
          capacity: 8, 
          amenities: [], 
          location: 'Zakopane', 
          distance: 1.5, 
-         notes: '', 
+         notes: 'Cena obliczona dla 1x Apartament 4-os (275zł/dobę) + 2x Pokój 2-os (137zł/dobę) * 7 nocy.', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0).' },
             { sender: 'owner', message: 'Tak jest możliwy ilu osobowe pokoje potrzeba' },
             { sender: 'user', message: 'Najlepiej dwa dwuosobowe i jeden czteroosobowy ale jeśli dostępne są inne to jesteśmy elastyczni pod tym względem :)' },
             { sender: 'owner', message: 'Wolny Apartament 4 os 2 pomieszczenia z wyposażona kuchnią widokowy taras na góry piękny widok tv internet cena 275zl doba za 4os.Pokoje 2os każdy z łazienką widokowy balkon na góry do dyspozycji na korytarzu aneks oraz kuchnia TV Internet grill parking plac zabaw cena 137zl doba za pokój 2os.' }
-        ], latitude: 49.2991, longitude: 19.9575 }, 
+        ], latitude: 49.2991, longitude: 19.9575, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Pokoje+Apartamenty' }, 
         { id: 12, 
          title: 'Willa Monia - Zakopane Pardałówka 15-20 min. spacerkiem do Krupówek', 
          link: 'https://www.olx.pl/d/oferta/willa-monia-zakopane-pardalowka-15-20-min-spacerkiem-do-krupowek-CID1816-ID15zggt.html', 
@@ -457,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)? Goście: dorośli (7), dzieci (1) niemowlęta (0)' },
             { sender: 'owner', message: 'W podanym terminie mamy dostępne 3 pokoje 2 osobowe z łóżkami małżeńskimi + jedno z pojedynczym łóżkiem. Koszt 130 zł od osoby dorosłej za dobę, dziecko do 12 roku życia 100 zł za dobę. W cenie wliczone jest śniadanie w formie szwedzkiego stołu. Zapraszamy!' }
-        ], latitude: 49.3039, longitude: 19.9880 },
+        ], latitude: 49.3039, longitude: 19.9880, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Willa+Monia' },
         { id: 13, 
          title: 'Zakopane, pokoje z łazienką, blisko centrum, Krupówki, do skoczni 300m', 
          link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-z-lazienka-blisko-centrum-krupowki-do-skoczni-300m-CID1816-IDYCqId.html', 
@@ -473,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam. Mamy wolne pokoje w tym terminie w cenie 80 zł/osoba za dobę. Dla gości zmotoryzowanych mamy halling przy budynku, w tej cenie. W ofercie wcześniej innych zapytał, chciałbym prosić o użycie bezpośredniego kontaktu (jeśli RODO nie trafi). Pozdrawiam Leszek Medowski' }
-        ], latitude: 49.2980, longitude: 19.9580 }, 
+        ], latitude: 49.2980, longitude: 19.9580, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Pokoje+Centrum' }, 
         { id: 14, 
          title: 'WAKACJE-Apartament 2-10os, Blisko Centrum, Dworca PKP,PKS, Widok TATRY', 
          link: 'https://www.olx.pl/d/oferta/wakacje-apartament-2-10os-blisko-centru-m-dworca-pkp-pks-widok-tatry-CID1816-IDQrv4l.html', 
@@ -488,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)? Goście: dorośli (7), dzieci (1) niemowlęta (0)' },
             { sender: 'owner', message: 'Jest wolny proszę dzwonić na 500704655' }
-        ], latitude: 49.2970, longitude: 19.9670 }, 
+        ], latitude: 49.2970, longitude: 19.9670, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Apartament+2-10os' }, 
         { id: 15, 
          title: 'U Sobali - apartament z widokiem oraz pokoje gościnne, Ul. Mrowce 14', 
          link: 'https://www.olx.pl/d/oferta/u-sobali-apartament-z-widokiem-oraz-po-koje-goscinne-ul-mrowce-14-CID1816-IDzQfs5.html', 
@@ -505,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'A jakie Pokoje (ilu osobowe) Państwo potrzebują?' },
             { sender: 'user', message: 'Najlepiej 2 dwuosobowe i 1 czteroosobowy ale jesteśmy elastyczni pod tym względem :)' },
             { sender: 'owner', message: 'Dysponujemy  w tym terminie  pokojem  4 os z łazienką  w  cenie  230 zł za dobę od  całej rodziny  oraz 2 x 2 os z łazienkami  w cenie  125 zł za dobę  za jeden pokój Pozdrawiam' }
-        ], latitude: 49.2700, longitude: 19.9500 }, 
+        ], latitude: 49.2700, longitude: 19.9500, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=U+Sobali' }, 
         { id: 16, 
          title: 'Wynajem Pokoi Gościnnych "Nowa Grań"', 
          link: 'https://www.olx.pl/d/oferta/wynajem-pokoi-goscinnych-nowa-gran-CID1816-IDWLyHh.html', 
@@ -528,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'A od 27 lipca mam pokoje z ogłoszenia również 2x dwuosobowego i czteroosobowy. Cena za 4 osobowy 300zł za dobę za pokój, a cena pokoju 2 osobowego 180zł za pokój za dobę. Pokoje z prywatnymi łazienkami, balkonami z widokiem na góry😊' },
             { sender: 'owner', message: 'Oraz w obu opcjach kuchnia ogólnodostępna z ekspresem do kawy, piekarnikiem itd.' },
             { sender: 'owner', message: 'Za cały pobyt: 1 opcja po zsumowaniu 4200zł, 2 opcja 4620zł. Zapraszam serdecznie Adres: ul.Pardałówka 60, Zakopane' }
-        ], latitude: 49.3010, longitude: 19.9600 }, 
+        ], latitude: 49.3010, longitude: 19.9600, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Nowa+Gran' }, 
         { id: 17, 
          title: 'Drewniany domek z pięknym widokiem na Gubałówce', 
          link: 'https://www.olx.pl/d/oferta/drewniany-domek-z-pieknym-widokiem-na-gubalowce-CID1816-ID10Rmvt.html', 
@@ -547,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Zapraszam' },
             { sender: 'user', message: 'W jakiej cenie byłby ten dostępny domek?' },
             { sender: 'owner', message: '6000 zł za cały pobyt bqlia w cenie' },
-        ], latitude: 49.3100, longitude: 19.9300 },
+        ], latitude: 49.3100, longitude: 19.9300, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+Gubalowka' },
         { id: 18, 
          title: 'Nowe domki górlaskie Gubałówka Zakopane (8 osób) z widokiem- wynajem', 
          link: 'https://www.olx.pl/d/oferta/nowe-domki-gorlaskie-gubalowka-zakopa-ne-8-osob-z-widokiem-wynajem-CID1816-IDZWnxE.html', 
@@ -562,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Dzień dobry. Ten domek jest wolny w tym terminie. Cena za domek na wyłączność, wynosi w tym terminie 700 zł/noc.' }
-        ], latitude: 49.3150, longitude: 19.9250 },
+        ], latitude: 49.3150, longitude: 19.9250, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domki+Gubalowka' },
         { id: 19, 
          title: '"Domek u Paulinki" Zakopane Noclegi', 
          link: 'https://www.olx.pl/d/oferta/domek-u-paulinki-zakopane-noclegi-CID1816-IDv9Bfk.html', 
@@ -577,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Goście: dorośli (7) dzieci (1) niemowlęta (0)' },
             { sender: 'owner', message: 'Proszę o kontakt telefoniczny pod numerem: 794108159' }
-        ], latitude: 49.2900, longitude: 19.9600 }, 
+        ], latitude: 49.2900, longitude: 19.9600, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+u+Paulinki' }, 
         { id: 20, 
          title: 'Domek u "Socków" zapraszamy na święta, majówkę i wakacje', 
          link: 'https://www.olx.pl/d/oferta/domek-u-sockow-zapraszamy-na-swieta-majowke-i-wakacje-CID1816-ID13nYkw.html', 
@@ -593,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0)' },
             { sender: 'owner', message: 'Witam serdecznie tak mamy wolny termin cena za dobę to 700zł zapraszamy' },
              { sender: 'owner', message: 'Na zachętę ostatni nocleg  - 50 % taniej' }
-        ], latitude: 49.2850, longitude: 19.9550 }, 
+        ], latitude: 49.2850, longitude: 19.9550, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+u+Sockow' }, 
         { id: 21, 
          title: 'Prestige Apartamenty Bystra Woda Centrum Zakopane 1-8 osób', 
          link: 'https://www.olx.pl/d/oferta/prestige-apartamenty-bystra-woda-centrum-zakopane-1-8-osob-CID1816-IDqVpRj.html', 
@@ -602,13 +627,13 @@ document.addEventListener('DOMContentLoaded', () => {
          status: 'Cena i dostępność potwierdzona.', 
          capacity: 8, 
          amenities: [], 
-         location: 'Centrum Zakopane', 
+         location: 'Centrum Zakopanego', 
          distance: 0.5, 
-         notes: 'Cena 794 zł/doba.', 
+         notes: 'Cena 750 zł/doba.', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)?' },
             { sender: 'owner', message: '750 złdoba' }
-        ], latitude: 49.2995, longitude: 19.9585 }, 
+        ], latitude: 49.2995, longitude: 19.9585, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Prestige+Apartamenty' }, 
         { id: 22, 
          title: 'Zakopane - pokoje w górach - widoki na Tatry - Parking', 
          link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-w-gorach-widoki-na-tatry-parking-CID1816-IDxTx4h.html', 
@@ -622,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
          notes: '', 
          chatContent: [
             { sender: 'system', message: 'Brak konwersacji w pliku PDF dla tej oferty.' }
-        ], latitude: 49.2700, longitude: 19.9700 }, 
+        ], latitude: 49.2700, longitude: 19.9700, imageUrl: 'https://placehold.co/300x200/CCCCCC/808080?text=Brak+Zdjęcia' }, 
         { id: 23, 
          title: 'Zapraszamy do Villa Baja wolne pokoje 3km centrum', 
          link: 'https://www.olx.pl/d/oferta/zapraszamy-do-villa-baja-wolne-pokoje-3km-centrum-CID1816-IDNv0DD.html', 
@@ -638,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0).' },
             { sender: 'owner', message: 'owner' },
             { sender: 'user', message: 'Jakie pokoje potrzebujecie?' },
-            { sender: 'user', message: 'Najlepiej dwa dwuosobowe i jeden czterosobowy ale jesteśmy elastyczni pod tym względem :)' },
+            { sender: 'user', message: 'Najlepiej dwa dwuosobowe i jeden czteroosobowy ale jesteśmy elastyczni pod tym względem :)' },
             { sender: 'owner', message: 'Posiadamy wolne pokoje' },
             { sender: 'owner', message: 'Dwa dwu osobowe oraz jeden 4 osobowy' },
             { sender: 'user', message: 'w jakiej cenie?' },
@@ -647,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Na 7 nocy chcecie ?' },
             { sender: 'owner', message: '75 zł od osoby' },
             { sender: 'owner', message: 'Za nocleg' }
-        ], latitude: 49.3050, longitude: 19.9400 }, 
+        ], latitude: 49.3050, longitude: 19.9400, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Villa+Baja' }, 
         { id: 24, 
          title: 'Apartamenty Zakopane Najbliższe Szlaki 350m ! WOLNE ! OBIADY 25ZŁ', 
          link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-najblizsze-szlaki-350m-wolne-obiady-25zlCID1816-IDjpzbi.html', 
@@ -663,7 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam tak. 270zl doba nr 14. Pozdrawiam Damian Apartamenty Dwa Niedźwiedzie.' },
             { sender: 'owner', message: 'Przepraszam zapomniałem dopisać 13 i 14 po 270 doba. Lub niżej 11 i 3 po 300zł doba. Apartamenty są dla maksymalnie 4 osób.' }
-        ], latitude: 49.2985, longitude: 19.9600 }, 
+        ], latitude: 49.2985, longitude: 19.9600, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Najblizsze+Szlaki' }, 
         { id: 25, 
          title: 'Apartament w górach z widokiem na góry blisko term i szlaków dla rodzin', 
          link: 'https://www.olx.pl/d/oferta/apartament-w-gorach-z-widokiem-na-gory-bisko-term-i-szlakow-dla-rodzin-CID1816-ID16aFoq.html', 
@@ -680,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Pokój 4 osobowy standard trzylatek. balkon. Widok z łazienki na Tatry. Zachodzony w cenie 90 zł/osoba/noc. dziecko, poniżej lat 10- ceny w cenie 63 zł/noc.pokój 4 osobowy standard z łazienką, balkonem i widokiem z balkonu na Tatry Zachodnie w cenie 90 zł/osoba/noc, dziecko poniżej lat 10-ciu w cenie 63 zł/noc' },
             { sender: 'owner', message: 'Góralski Sen dla 4 osób z aneksem kuchennym, łazienką, bujanym hamakiem, dwoma balkonami i  bezpośrednim widokiem na całą panoramę Tatr w cenie 115 zł/osoba/noc, dziecko poniżej lat 10-ciu w cenie 81 zł/noc' }
-        ], latitude: 49.2750, longitude: 19.9400 }, 
+        ], latitude: 49.2750, longitude: 19.9400, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Apartament+Gory+Termy' }, 
         { id: 26, 
          title: 'Zakopane!!! Pokoje, noclegi w Centrum!!! Boże Ciało, WAKACJE 2025', 
          link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-noclegi-w-centrum-boze-cialo-wakacje-2025-CID1816-ID1foBh.html', 
@@ -696,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Zapraszam do kontaktu telefonicznego (603444718) Moja mama zajmuje się pensjonatem a ja tylko odpowiadam na wiadomości' }
-        ], latitude: 49.2990, longitude: 19.9570 }, 
+        ], latitude: 49.2990, longitude: 19.9570, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Pokoje+Centrum' }, 
         { id: 27, 
          title: 'Dom na wyłączność jacuzzi ,święta', 
          link: 'https://www.olx.pl/d/oferta/dom-na-wylacznosc-jacuzzi-swieta-CID1816-ID12cf5V.html', 
@@ -714,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Jaka by była cena za pokoje 102 dwa dwuosobowe i jeden czteroosobowy. Jaka byłaby cena za dom na wyłączność? (27-02.08)' },
             { sender: 'owner', message: 'Cena za domek 1200zl  Domek Gabi zdjecia na stronie' },
             { sender: 'owner', message: 'Cena za pokój 70 zł nocleg od osoby' }
-        ], latitude: 49.2900, longitude: 19.9500 }, 
+        ], latitude: 49.2900, longitude: 19.9500, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Dom+Jacuzzi' }, 
         { id: 28, 
          title: 'Domki pod lasem WYNAJEM Domek', 
          link: 'https://www.olx.pl/d/oferta/domki-pod-lasem-wynajem-domek-CID1816-IDwnlvP.html', 
@@ -731,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Witam mam wolne zapraszam' },
             { sender: 'user', message: 'W jakiej cenie?' },
             { sender: 'owner', message: '500 za dobę' }
-        ], latitude: 49.2800, longitude: 19.9800 }, 
+        ], latitude: 49.2800, longitude: 19.9800, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domki+pod+lasem' }, 
         { id: 29, 
          title: 'Domek w centrum Zakopanego, ul Tetmajera, Tatry', 
          link: 'https://www.olx.pl/d/oferta/domek-w-centrum-zakopanego-ul-tetmajera-tatry-CID1816-IDGdv-s9.html', 
@@ -748,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Mamy jeszcze wolny termin' },
             { sender: 'user', message: 'W jakiej cenie?' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.3000, longitude: 19.9650, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+Tetmajera' }, 
         { id: 30, 
          title: 'Wynajem pokoi i apartamentów Zakopane ul.Króle 1a', 
          link: 'https://www.olx.pl/d/oferta/wynajem-pokoi-i-apartamentow-zakopane-ul-krole-1a-CID1816-ID16ahB4.html', 
@@ -757,7 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
          status: 'Dostępny, 80zł os/doba', 
          capacity: null, 
          amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
+         location: 'ul.Króle 1a, Zakopane', 
          distance: 1.2, 
          notes: '', 
          chatContent: [
@@ -769,7 +794,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'No tak mamy dwa dwuosobowe i jedna czwórkę' },
             { sender: 'user', message: 'jaka byłaby cena?' },
             { sender: 'owner', message: '80 zł doba od osoby' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.3023, longitude: 19.9578, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Krole+1a' }, 
         { id: 31, 
          title: 'Domek Góralski z widokiem na góry blisko Term Białka Bukowina ognisko', 
          link: 'https://www.olx.pl/d/oferta/domek-goralski-z-widokiem-na-gory-blisko-term-bialka-bukowina-ognisko-CID1816-ID169qH4.html?isPreviewActive=0&sliderIndex=4', 
@@ -777,15 +802,15 @@ document.addEventListener('DOMContentLoaded', () => {
          availability: 'Częściowo', 
          status: 'dostepny od 29 lipca', 
          capacity: null, 
-         amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
-         distance: 1.2, 
+         amenities: ['Widok na góry', 'Blisko Term Białka/Bukowina', 'Ognisko'], 
+         location: 'Białka Tatrzańska', 
+         distance: 14.0, 
          notes: '', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam domek mam dostępny do 29 lipca cena za dobre 600 zł' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.4000, longitude: 20.0800, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Domek+Goralski+Bialka' }, 
         { id: 32, 
          title: 'Zakopane, apartamenty, pokoje gościnne, centrum, blisko do szlaków.', 
          link: 'https://www.olx.pl/d/oferta/zakopane-apartamenty-pokoje-goscinne-centrum-blisko-do-szlakow-CID1816-IDPbuNi.html', 
@@ -794,14 +819,14 @@ document.addEventListener('DOMContentLoaded', () => {
          status: 'Dostępny', 
          capacity: null, 
          amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
-         distance: 1.2, 
-         notes: '', 
+         location: 'Centrum Zakopanego', 
+         distance: 0.8, 
+         notes: 'Cena 80 zł/osoba za dobę.', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam. Mamy wolne pokoje w tym terminie w cenie 80 zł/osoba za dobę.  Dla gości zmotoryzowanych mamy parking przy budynku w tej cenie.  W sprawie wszelkich innych zapytań oraz rezerwacji proszę dzwonić bezpośrednio do gospodyni pod nr. (ukryte informacje)  Pozdrawiam Leszek Medrzycki' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.2998, longitude: 19.9570, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Pokoje+Centrum+Szlakow' }, 
         { id: 33, 
          title: 'Nocleg Komfortowe Pokoje GÓRY, Dom do wynajęcia', 
          link: 'https://www.olx.pl/d/oferta/nocleg-komfortowe-pokoje-gory-dom-do-wynajecia-CID1816-IDliY30.html', 
@@ -810,14 +835,14 @@ document.addEventListener('DOMContentLoaded', () => {
          status: 'Dostępny', 
          capacity: null, 
          amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
-         distance: 1.2, 
+         location: 'Zakopane', 
+         distance: 2.0, 
          notes: '', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Tak proszę o kontakt  telefoniczny (ukryte informacje)' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.2900, longitude: 19.9500, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Komfortowe+Pokoje' }, 
         { id: 34, 
          title: 'Willa Wojcias Zapraszamy!!!', 
          link: 'https://www.olx.pl/d/oferta/willa-wojcias-zapraszamy-CID1816-IDKMIsT.html?chat=1&isPreviewActive=0', 
@@ -826,9 +851,9 @@ document.addEventListener('DOMContentLoaded', () => {
          status: 'Dostępny', 
          capacity: null, 
          amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
-         distance: 1.2, 
-         notes: '', 
+         location: 'Zakopane', 
+         distance: 1.0, 
+         notes: 'Cena 65 zł od osoby.', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
@@ -837,17 +862,17 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'owner', message: 'Bylyby dostępne takie pokoje zapraszam rezerwacja pod numerem 505 847 214' },
             { sender: 'user', message: 'jaka byłaby cena za te pokoje?' },
             { sender: 'owner', message: 'Nocleg 65 zl od osoby' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.2990, longitude: 19.9570, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Willa+Wojcias' }, 
         { id: 35, 
          title: 'Pokoje Apartament u Bartka', 
          link: 'https://www.olx.pl/d/oferta/pokoje-apartament-u-bartka-CID1816-IDwwzz1.html?chat=1&isPreviewActive=0', 
          totalPrice: 2800, 
-         availability: '2800 za pokoje dla wszystkich, 3300 za apartament', 
-         status: 'Dostępny', 
+         availability: 'Dostępny', 
+         status: '2800 za pokoje dla wszystkich, 3300 za apartament', 
          capacity: null, 
          amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
-         distance: 1.2, 
+         location: 'Zakopane', 
+         distance: 1.5, 
          notes: '', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
@@ -856,23 +881,23 @@ document.addEventListener('DOMContentLoaded', () => {
             { sender: 'user', message: 'Najlepiej apartament  lub 2 pokoje dwuosobowe i 1 czteroosobowy' },
             { sender: 'owner', message: 'Apartament 3300zl' },
             { sender: 'owner', message: 'Pokoje 2800 zł za cały pobyt od wszystkich' }
-        ], latitude: 49.3000, longitude: 19.9650 }, 
+        ], latitude: 49.2991, longitude: 19.9575, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Apartament+u+Bartka' }, 
         { id: 36, 
          title: 'Pokoje Gościnne Nocleg w Górach Zakopane Poronin Tanio Kwatery Wakacje', 
          link: 'https://www.olx.pl/d/oferta/pokoje-goscinne-nocleg-w-gorach-zakopane-poronin-tanio-kwatery-wakacje-CID1816-IDmTCd8.html', 
          totalPrice: 2800, 
-         availability: '2800 za pokoje', 
-         status: 'Dostępny', 
+         availability: 'Dostępny', 
+         status: 'Dostępny, 50 zł os/noc', 
          capacity: null, 
          amenities: [], 
-         location: 'Centrum Zakopanego, ul. Tetmajera', 
-         distance: 1.2, 
-         notes: '', 
+         location: 'Poronin', 
+         distance: 7.0, 
+         notes: 'Cena 50 złotych od osoby za noc. Dostępny pokój trzyosobowy i czteroosobowy.', 
          chatContent: [
             { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
             { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
             { sender: 'owner', message: 'Witam Miałbym wolny pokój trzyosobowy i czteroosobowy obok siebie na tym samym piętrze gdzie byli by państwo sami w cenie 50 złotych od osoby za noc' }
-        ], latitude: 49.3000, longitude: 19.9650 }              
+        ], latitude: 49.3370, longitude: 20.0050, imageUrl: 'https://placehold.co/300x200/4A7856/FFFFFF?text=Pokoje+Poronin' }              
     ];
 
     const offersGrid = document.getElementById('offers-grid');
@@ -885,7 +910,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatModal = document.getElementById('chatModal');
     const chatModalTitle = document.getElementById('chatModalTitle');
     const chatMessagesContainer = document.getElementById('chatMessages');
-    const modalClose = document.getElementsByClassName('modal-close')[0];
+    const chatModalClose = document.getElementsByClassName('chat-close-btn')[0];
+
+    // Modal elements for image
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalCaption = document.getElementById('modalCaption');
+    const imageModalClose = document.getElementsByClassName('image-close-btn')[0];
 
     const getStatusColor = (availability) => {
         switch (availability) {
@@ -946,12 +977,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${offer.notes ? `<p class="mt-1"><span class="font-semibold">Notatki:</span> ${offer.notes}</p>` : ''}
                     </div>
                 </div>
-                <div class="p-6 bg-gray-50 border-t border-gray-200">
+                <div class="p-4 flex-shrink-0 flex justify-center items-center">
+                    ${offer.imageUrl ? `
+                        <img src="${offer.imageUrl}" alt="Zdjęcie noclegu" class="w-full h-32 object-cover rounded-md shadow-sm cursor-pointer property-image-trigger" data-image-url="${offer.imageUrl}" data-image-title="Zdjęcie noclegu: ${offer.title}">
+                    ` : `
+                        <div class="w-full h-32 bg-gray-200 flex items-center justify-center rounded-md text-gray-500 text-sm">Brak zdjęcia noclegu</div>
+                    `}
+                </div>
+                <div class="p-6 bg-gray-50 border-t border-gray-200 flex flex-col gap-2">
                     <button class="w-full text-center block bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors open-chat-modal-btn" data-offer-id="${offer.id}">
                         Pokaż Konwersację
                     </button>
-                </div>
-                <div class="p-6 bg-gray-50 border-t border-gray-200">
                     <a href="${offer.link}" target="_blank" rel="noopener noreferrer" class="w-full text-center block bg-[#4A7856] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#2F5233] transition-colors">
                         Zobacz Ofertę na OLX
                     </a>
@@ -978,10 +1014,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+
+        // Add event listeners for property image clicks
+        document.querySelectorAll('.property-image-trigger').forEach(img => {
+            img.addEventListener('click', function() {
+                modalImage.src = this.dataset.imageUrl;
+                modalCaption.textContent = this.dataset.imageTitle;
+                imageModal.style.display = 'flex'; // Show image modal
+            });
+        });
     };
 
-    // Close the modal when clicking on the close button or outside the content
-    modalClose.addEventListener('click', () => {
+    // Close the chat modal
+    chatModalClose.addEventListener('click', () => {
         chatModal.style.display = 'none';
     });
     chatModal.addEventListener('click', (e) => {
@@ -989,6 +1034,17 @@ document.addEventListener('DOMContentLoaded', () => {
             chatModal.style.display = 'none';
         }
     });
+
+    // Close the image modal
+    imageModalClose.addEventListener('click', () => {
+        imageModal.style.display = 'none';
+    });
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) {
+            imageModal.style.display = 'none';
+        }
+    });
+
 
     availabilityFilter.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
