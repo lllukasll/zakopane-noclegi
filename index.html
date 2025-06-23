@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals & Deep Forest Green -->
     <!-- Application Structure Plan: A single-page dashboard designed for decision-making. The structure prioritizes user interaction over mirroring the source report's linear flow. It consists of: 1. A global navigation bar for quick scrolling. 2. A powerful control panel with sorting and filtering options (by price, distance, amenities, availability), which is the primary interaction hub. 3. An interactive grid of "offer cards" that dynamically updates based on user selections, presenting key information concisely. 4. A visualization section with bar charts for at-a-glance comparison of price and location trade-offs. 5. A final summary and recommendations section to guide the user's choice. This task-oriented design empowers the user to explore the data according to their personal priorities (e.g., "show me the cheapest available options with a jacuzzi"), making the complex data from the report easily digestible and comparable. -->
-    <!-- Visualization & Content Choices: The core of the application is the transformation of static report entries into interactive elements. Report Info: Each accommodation offer. Goal: Compare options based on multiple criteria. Viz/Presentation Method: An interactive card grid (HTML/Tailwind/JS). Interaction: Users can filter and sort the cards. Justification: Cards are more flexible and mobile-friendly than a static table, allowing for a clearer presentation of varied information. Report Info: Price and Distance data. Goal: Provide a high-level visual summary of key trade-offs. Viz/Presentation Method: Two separate bar charts (Chart.js/Canvas). Interaction: Tooltips on hover provide exact values. Justification: Bar charts are ideal for comparing discrete values across different categories, making the cost-vs-location dilemma immediately apparent. All interactions are handled by vanilla JavaScript, ensuring a lightweight and fast experience. -->
+    <!-- Visualization & Content Choices: The core of the application is the transformation of static report entries into interactive elements. Report Info: Each accommodation offer. Goal: Compare options based on multiple criteria. Viz/Presentation Method: An interactive card grid (HTML/Tailwind/JS) now including a "Pokaż Konwersację" button that opens a modal displaying the chat transcript. Interaction: Users can filter and sort the cards. Clicking the button opens a fullscreen modal for reading chat content. Justification: Cards are more flexible and mobile-friendly than a static table, allowing for a clearer presentation of varied information. Chat transcripts provide direct context for data. Report Info: Price and Distance data. Goal: Provide a high-level visual summary of key trade-offs. Viz/Presentation Method: Two separate bar charts (Chart.js/Canvas). Interaction: Tooltips on hover provide exact values. Justification: Bar charts are ideal for comparing discrete values across different categories, making the cost-vs-location dilemma immediately apparent. All interactions are handled by vanilla JavaScript, ensuring a lightweight and fast experience. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
@@ -53,6 +53,66 @@
         .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.8); /* Black w/ opacity */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content-chat {
+            background-color: #ffffff;
+            margin: auto;
+            padding: 2rem;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .modal-close:hover,
+        .modal-close:focus {
+            color: #bbb;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .chat-message {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-user {
+            background-color: #e0f2f1; /* Light green */
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .chat-owner {
+            background-color: #f0f0f0; /* Light gray */
+            align-self: flex-start;
+            margin-right: auto;
         }
     </style>
 </head>
@@ -148,7 +208,7 @@
                         <ul class="list-disc list-inside space-y-2 text-gray-700">
                            <li><strong>Zawsze potwierdzaj cenę całkowitą:</strong> Dopytaj o wszystkie dodatkowe opłaty (klimatyczna, za media, sprzątanie).</li>
                            <li><strong>Weryfikuj dokładną lokalizację:</strong> Użyj mapy, aby ocenić realny czas i koszt dojazdów do Krupówek i innych atrakcji.</li>
-                           <li><strong>Określ priorytety grupy:</strong> Zdecycydujcie, co jest ważniejsze – bliskość centrum, cisza i widoki, czy dostęp do basenu/jacuzzi.</li>
+                           <li><strong>Określ priorytety grupy:</strong> Zdecydujcie, co jest ważniejsze – bliskość centrum, cisza i widoki, czy dostęp do basenu/jacuzzi.</li>
                         </ul>
                     </div>
                  </div>
@@ -157,40 +217,174 @@
 
     </main>
 
+    <!-- The Modal for chat conversation -->
+    <div id="chatModal" class="modal fixed inset-0 flex items-center justify-center p-4" style="display: none;">
+        <span class="modal-close">&times;</span>
+        <div class="modal-content-chat">
+            <h3 class="text-xl font-bold text-center mb-4 text-[#2F5233]" id="chatModalTitle"></h3>
+            <div id="chatMessages" class="flex flex-col gap-3">
+                <!-- Chat messages will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
     const accommodationData = [
-        { id: 1, title: 'Domek 8-osobowy CHOCHOŁÓW', link: 'https://www.olx.pl/d/oferta/domek-zakopane-8osobowy-wynajem-chochol-CID1816-IDY2Pra.html', totalPrice: 5600, availability: 'Dostępny', status: 'Pełna dostępność i cena potwierdzona.', capacity: 8, amenities: [], location: 'Chochołów', distance: 20.5, notes: 'Dostępny w terminie 25.07-02.08.2025 dla 7 dorosłych i 1 dziecka.' },
-        { id: 2, title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', totalPrice: 3920, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Piękne widoki', 'Panorama Tatr'], location: 'Murzasichle', distance: 11.4, notes: 'Cena 70 zł od osoby za dobę. W drugim budynku.' },
-        { id: 3, title: 'Apartamenty z BASENEM, JACUZZI, sauna i parking - w cenie!', link: 'https://www.olx.pl/d/oferta/wakacje-basen-jacuzzi-sauna-i-parking-w-cenie-CID1816-IDvrPqn.html', totalPrice: 3850, availability: 'Częściowo', status: 'Cena potwierdzona, termin nie pokrywa się w pełni.', capacity: 8, amenities: ['Basen', 'Siłownia', 'Jacuzzi', 'Plac zabaw', 'Sauna', 'Grota solna', 'Parking'], location: 'Zakopane', distance: null, notes: 'Dostępne tylko 27.07-01.08.2025. Cena 550 zł za dobę.' },
-        { id: 4, title: 'Apartamenty Jaworowe Izby z balią z hydromasażem', link: 'https://www.olx.pl/d/oferta/apartamenty-jaworowe-izby-z-balia-z-hydromasazem-CID1816-ID15UskW.html', totalPrice: 3100, availability: 'Częściowo', status: 'Cena potwierdzona, 26.07 zarezerwowany.', capacity: 8, amenities: ['Balia z hydromasażem', 'Grill', 'Plac zabaw', 'Hamak', 'Huśtawki', 'Trampolina', 'Bramki do piłki nożnej', 'PlayStation', 'WiFi', 'Parking'], location: 'Zakopane', distance: null, notes: 'Dostępny od 27.07 do 02.08.2025. Całkowita cena 3100 zł.' },
-        { id: 5, title: 'BOŻE CIAŁO!! Wakacje!! Ostatnie wolne pokoje!!', link: 'https://www.olx.pl/d/oferta/boze-cialo-wakacje-ostatnie-wolne-pokoje-CID1816-IDKmdfh.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Wymaga dalszego kontaktu w celu potwierdzenia dostępności i ceny.', capacity: 8, amenities: [], location: 'Zakopane', distance: null, notes: 'Brak potwierdzenia ceny i dostępności w konwersacji.' },
-        { id: 6, title: 'Domek góralski Wooden Tatra House', link: 'https://www.olx.pl/d/oferta/domek-goralski-wooden-tatra-house-CID1816-ID16iUMx.html', totalPrice: 6230, availability: 'Dostępny', status: 'Cena całkowita i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Zakopane', distance: null, notes: 'Dostępny 26.07-02.08.2025. Całkowita cena 6230 zł.' },
-        { id: 7, title: 'Zakopane domek 12 osobowy wakacje święta ferie', link: 'https://www.olx.pl/d/oferta/zakopane-domek-12-osobowy-wakacje-swieta-ferie-CID1816-IDL9SkM.html?reason=seller_profile', totalPrice: 5600, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 12, amenities: [], location: 'Zakopane', distance: null, notes: 'Dostępny 26.07-02.08.2025. Cena 800 zł za dobę. Oferuje więcej miejsca niż wymagane.' },
-        { id: 8, title: 'Domek k/ Zakopane, widoki na góry, jacuzzi prywatne', link: 'https://www.olx.pl/d/oferta/domek-k-zakopane-widoki-na-gory-jacuzzi-prywatne-CID1816-IDFikla.html', totalPrice: null, availability: 'Częściowo', status: 'Termin nie pokrywa się w pełni. Cena jacuzzi dodatkowo płatna.', capacity: 8, amenities: ['Widoki na góry', 'Prywatne jacuzzi (dodatkowo płatne)'], location: 'Koło Zakopanego', distance: null, notes: 'Dostępny tylko 30.07-03.08.2025. Cena za dobę 850 zł + opłata za jacuzzi.' },
-        { id: 9, title: 'Domek z jacuzzi, balia na wyłączność Termy Chochołów domek Zakopane', link: 'https://www.olx.pl/d/oferta/domek-z-jacuzzi-balia-na-wylacznosc-termy-chocholow-domek-zakopane-CID1816-ID15S2Bp.html', totalPrice: 4200, availability: 'Dostępny', status: 'Pełna dostępność i cena potwierdzona.', capacity: 8, amenities: ['Jacuzzi', 'Balia na wyłączność', 'Klimatyzacja'], location: 'blisko Term Chochołów', distance: 20.5, notes: 'Dostępny 26.07-02.08.2025. Cena 600 zł za dobę. 400m od Term Chochołowskich.' },
-        { id: 10, title: 'Domki Zakopane domek w górach góry apartamenty noclegi kwatery pokoje', link: 'https://www.olx.pl/d/oferta/domki-zakopane-domek-w-gorach-gory-apartamenty-noclegi-kwatery-pokoje-CID1816-IDJ3aCB.html', totalPrice: null, availability: 'Brak Danych', status: 'Informacje w czacie niejasne, ogłoszenie: 390 zł.', capacity: 8, amenities: ['Grill', 'Plac zabaw', 'Wi-Fi', 'TV', 'Kuchnia', 'Łazienka', 'Parking', 'Akceptacja zwierząt'], location: 'Gliczarów Górny, ul. Fiskowa Dolina 20', distance: 11.4, notes: 'Brak jednoznacznego potwierdzenia ceny i dostępności w czacie.' },
-        { id: 11, title: 'Pokoje noclegi Zakopane, apartamenty', link: 'https://www.olx.pl/d/oferta/pokoje-noclegi-zakopane-apartamenty-CID1816-ID15BqqL.html', totalPrice: null, availability: 'Brak Danych', status: 'Brak konwersacji/danych do potwierdzenia.', capacity: null, amenities: [], location: 'Zakopane', distance: null, notes: '' },
-        { id: 12, title: 'Willa Monia - Zakopane Pardałówka 15-20 min. spacerkiem do Krupówek', link: 'https://www.olx.pl/d/oferta/willa-monia-zakopane-pardalowka-15-20-min-spacerkiem-do-krupowek-CID1816-ID15zggt.html', totalPrice: 7070, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Zakopane Pardałówka', distance: 1.5, notes: 'Cena 130 zł/osoba dorosła, 100 zł/dziecko za dobę. Ok. 15-20 min. spacerkiem do Krupówek.' },
-        { id: 13, title: 'Zakopane, pokoje z łazienką, blisko centrum, Krupówki, do skoczni 300m', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-z-lazienka-blisko-centrum-krupowki-do-skoczni-300m-CID1816-IDYCqId.html', totalPrice: 4480, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Łazienka', 'Halling'], location: 'Zakopane, blisko centrum', distance: 0.3, notes: 'Cena 80 zł/osoba za dobę. Do skoczni 300m, blisko Krupówek.' },
-        { id: 14, title: 'WAKACJE-Apartament 2-10os, Blisko Centrum, Dworca PKP,PKS, Widok TATRY', link: 'https://www.olx.pl/d/oferta/wakacje-apartament-2-10os-blisko-centru-m-dworca-pkp-pks-widok-tatry-CID1816-IDQrv4l.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji. Proszono o kontakt telefoniczny.', capacity: '2-10 osób', amenities: ['Widok TATRY'], location: 'Blisko Centrum, Dworca PKP, PKS', distance: null, notes: '' },
-        { id: 15, title: 'U Sobali - apartament z widokiem oraz pokoje gościnne, Ul. Mrowce 14', link: 'https://www.olx.pl/d/oferta/u-sobali-apartament-z-widokiem-oraz-po-koje-goscinne-ul-mrowce-14-CID1816-IDzQfs5.html', totalPrice: 3500, availability: 'Dostępny', status: 'Cena potwierdzona (dla kombinacji pokoi), dostępność potwierdzona.', capacity: 8, amenities: ['Widok'], location: 'Ul. Mrowce 14', distance: null, notes: 'Oferowane są pokoje 2os (125zł/dobę) i 3os (70zł/dobę). Cena obliczona dla 4 pokoi 2-osobowych.' },
-        { id: 16, title: 'Wynajem Pokoi Gościnnych "Nowa Grań"', link: 'https://www.olx.pl/d/oferta/wynajem-pokoi-goscinnych-nowa-gran-CID1816-IDWLyHh.html', totalPrice: 4320, availability: 'Częściowo', status: 'Cena i częściowa dostępność potwierdzona.', capacity: 8, amenities: ['Łazienki', 'Balkony z widokiem'], location: null, distance: null, notes: 'Dostępne od 27 lipca. Cena 90 zł/osoba za dobę.' },
-        { id: 17, title: 'Drewniany domek z pięknym widokiem na Gubałówce', link: 'https://www.olx.pl/d/oferta/drewniany-domek-z-pieknym-widokiem-na-gubalowce-CID1816-ID10Rmvt.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność tylko 26.07-31.07. Cena niejasna dla tej oferty.', capacity: null, amenities: ['Piękny widok'], location: 'Gubałówka', distance: null, notes: '' },
-        { id: 18, title: 'Nowe domki górlaskie Gubałówka Zakopane (8 osób) z widokiem- wynajem', link: 'https://www.olx.pl/d/oferta/nowe-domki-gorlaskie-gubalowka-zakopa-ne-8-osob-z-widokiem-wynajem-CID1816-IDZWnxE.html', totalPrice: 4900, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Widok'], location: 'Gubałówka', distance: null, notes: 'Cena 700 zł/noc za domek na wyłączność.' },
-        { id: 19, title: '"Domek u Paulinki" Zakopane Noclegi', link: 'https://www.olx.pl/d/oferta/domek-u-paulinki-zakopane-noclegi-CID1816-IDv9Bfk.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności. Proszono o kontakt telefoniczny.', capacity: null, amenities: [], location: null, distance: null, notes: '' },
-        { id: 20, title: 'Domek u "Socków" zapraszamy na święta, majówkę i wakacje', link: 'https://www.olx.pl/d/oferta/domek-u-sockow-zapraszamy-na-swieta-majowke-i-wakacje-CID1816-ID13nYkw.html', totalPrice: 4900, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: null, distance: null, notes: 'Cena 700 zł/dobę.' },
-        { id: 21, title: 'Prestige Apartamenty Bystra Woda Centrum Zakopane 1-8 osób', link: 'https://www.olx.pl/d/oferta/prestige-apartamenty-bystra-woda-centrum-zakopane-1-8-osob-CID1816-IDqVpRj.html', totalPrice: 5558, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Centrum Zakopane', distance: null, notes: 'Cena 794 zł/doba.' },
-        { id: 22, title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy (duplikat)', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', totalPrice: 3920, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona. Duplikat oferty nr 2.', capacity: 8, amenities: ['Piękne widoki', 'Panorama Tatr'], location: 'Murzasichle', distance: 11.4, notes: 'Cena 70 zł od osoby za dobę.' },
-        { id: 23, title: 'Zakopane - pokoje w górach - widoki na Tatry - Parking', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-w-gorach-widoki-na-tatry-parking-CID1816-IDxTx4h.html', totalPrice: null, availability: 'Brak Danych', status: 'Brak konwersacji/danych do potwierdzenia.', capacity: null, amenities: ['Widoki na Tatry', 'Parking'], location: 'Zakopane (w górach)', distance: null, notes: '' },
-        { id: 24, title: 'Zapraszamy do Villa Baja wolne pokoje 3km centrum', link: 'https://www.olx.pl/d/oferta/zapraszamy-do-villa-baja-wolne-pokoje-3km-centrum-CID1816-IDNv0DD.html', totalPrice: 4760, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: '3km od centrum', distance: 3, notes: 'Cena 85 zł/osoba/dobę.' },
-        { id: 25, title: 'Apartamenty Zakopane Najbliższe Szlaki 350m ! WOLNE ! OBIADY 25ZŁ', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-najblizsze-szlaki-350m-wolne-obiady-25zlCID1816-IDjpzbi.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność tylko 27-31 lipca. Oferta dla maks. 4 osób.', capacity: 4, amenities: ['Obiady 25zł'], location: 'Najbliższe Szlaki 350m', distance: 0.35, notes: 'Nieodpowiednie dla 8 osób.' },
-        { id: 26, title: 'Apartament w górach z widokiem na góry blisko term i szlaków dla rodzin', link: 'https://www.olx.pl/d/oferta/apartament-w-gorach-z-widokiem-na-gory-bisko-term-i-szlakow-dla-rodzin-CID1816-ID16aFoq.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak jednoznacznej ceny i dostępności dla grupy 8-osobowej.', capacity: 8, amenities: ['Widok na góry', 'Blisko term i szlaków', 'Basen', 'Jacuzzi'], location: 'W górach', distance: null, notes: 'Informacje o cenie i dostępności w konwersacji są niejasne i sprzeczne.' },
-        { id: 27, title: 'Zakopane!!! Pokoje, noclegi w Centrum!!! Boże Ciało, WAKACJE 2025', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-noclegi-w-centrum-boze-cialo-wakacje-2025-CID1816-ID1foBh.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności. Proszono o kontakt telefoniczny.', capacity: null, amenities: [], location: 'Centrum Zakopanego', distance: null, notes: '' },
-        { id: 28, title: 'Dom na wyłączność jacuzzi ,święta', link: 'https://www.olx.pl/d/oferta/dom-na-wylacznosc-jacuzzi-swieta-CID1816-ID12cf5V.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność od 27 lipca. Cena niepotwierdzona.', capacity: null, amenities: ['Jacuzzi'], location: null, distance: null, notes: 'Brak ceny dla terminu. Możliwe wynajęcie pokoi od 26 lipca.' },
-        { id: 29, title: 'Domki pod lasem WYNAJEM Domek', link: 'https://www.olx.pl/d/oferta/domki-pod-lasem-wynajem-domek-CID1816-IDwnlvP.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności.', capacity: null, amenities: [], location: 'Pod lasem', distance: null, notes: '' },
-        { id: 30, title: 'Domek w centrum Zakopanego, ul Tetmajera, Tatry', link: 'https://www.olx.pl/d/oferta/domek-w-centrum-zakopanego-ul-tetmajera-tatry-CID1816-IDGdv-s9.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji.', capacity: null, amenities: [], location: 'Centrum Zakopanego, ul. Tetmajera', distance: null, notes: '' }
+        { id: 1, title: 'Domek 8-osobowy CHOCHOŁÓW', link: 'https://www.olx.pl/d/oferta/domek-zakopane-8osobowy-wynajem-chochol-CID1816-IDY2Pra.html', totalPrice: 5600, availability: 'Dostępny', status: 'Pełna dostępność i cena potwierdzona.', capacity: 8, amenities: [], location: 'Chochołów', distance: 20.5, notes: 'Dostępny w terminie 25.07-02.08.2025 dla 7 dorosłych i 1 dziecka.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Tak jest dostepny' },
+            { sender: 'user', message: 'W jakiej cenie?' },
+            { sender: 'owner', message: 'Cena w okresie wakacji 800zł doba w sumie 5600zł za 7 nocy' }
+        ]},
+        { id: 2, title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', totalPrice: 3920, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Piękne widoki', 'Panorama Tatr'], location: 'Murzasichle', distance: 11.4, notes: 'Cena 70 zł od osoby za dobę. W drugim budynku.', chatContent: [
+            { sender: 'user', message: 'W jakiej cenie?' },
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Witam mamy w drugim budynku bardzo piękne widoki cała panorama Tatr w Murzasichle strona www.utrebuni.pl' },
+            { sender: 'owner', message: 'Tak wynajem jest możliwy 70 zł od osoby więcej informacji pod numerem tel 728 739 080 pozdrawiam' }
+        ]},
+        { id: 3, title: 'Apartamenty z BASENEM, JACUZZI, sauna i parking - w cenie!', link: 'https://www.olx.pl/d/oferta/wakacje-basen-jacuzzi-sauna-i-parking-w-cenie-CID1816-IDvrPqn.html', totalPrice: 3850, availability: 'Częściowo', status: 'Cena potwierdzona, termin nie pokrywa się w pełni.', capacity: 8, amenities: ['Basen', 'Siłownia', 'Jacuzzi', 'Plac zabaw', 'Sauna', 'Grota solna', 'Parking'], location: 'Zakopane', distance: null, notes: 'Dostępne tylko 27.07-01.08.2025. Cena 550 zł za dobę.', chatContent: [
+            { sender: 'user', message: 'Witam mam wolny apartamenty. Dziecko ile lat?' },
+            { sender: 'user', message: 'Dziecko 10 lat' },
+            { sender: 'owner', message: 'Mogę zaproponować apartament 1. Cena 80S-550 zł doba Apartament ma 7 miejsc do spania, dodatkowo możemy dostawić materac' },
+            { sender: 'owner', message: 'Apartament 1 (niski parter/przyziemie) - w cenie parking, basen, siłownia, jacuzzi, plac zabaw.' },
+            { sender: 'owner', message: 'Ewentualnie 2 apartamenty w tym samym budynku (byłyby to apartamenty 2 i 3) ale w terminie 27.07-01.08' },
+            { sender: 'owner', message: 'Lub inna opcja Apartamenty 1 i 2 - oddalone od siebie 10min spacerem, w terminie też 27.07-01.08' },
+            { sender: 'owner', message: 'Apartament 1 (niski parter/przyziemie) - w cenie parking, basen, siłownia, jacuzzi, plac zabaw. Apartament 2 (z tarasem) - z możliwością korzystania z sauny i groty solnej na wyłączność Apartament 3 (z balkonem) - w cenie parking, altanka, plac zabaw.' }
+        ]},
+        { id: 4, title: 'Apartamenty Jaworowe Izby z balią z hydromasażem', link: 'https://www.olx.pl/d/oferta/apartamenty-jaworowe-izby-z-balia-z-hydromasazem-CID1816-ID15UskW.html', totalPrice: 3100, availability: 'Częściowo', status: 'Cena potwierdzona, 26.07 zarezerwowany.', capacity: 8, amenities: ['Balia z hydromasażem', 'Grill', 'Plac zabaw', 'Hamak', 'Huśtawki', 'Trampolina', 'Bramki do piłki nożnej', 'PlayStation', 'WiFi', 'Parking'], location: 'Zakopane', distance: null, notes: 'Dostępny od 27.07 do 02.08.2025. Całkowita cena 3100 zł.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0)' },
+            { sender: 'owner', message: 'Dzień dobry, 26 lipca jest zarezerwowany, ale od 27 lipca do 2 sierpnia jak najbardziej zapraszamy :)' },
+            { sender: 'user', message: 'w jakiej cenie?' },
+            { sender: 'user', message: 'A w jakim wieku jest dziecko?' },
+            { sender: 'user', message: '10 lat' },
+            { sender: 'owner', message: 'To będzie 3100 zł, w cenie macie dwie sypialnie, dwie łazienki oraz oddzielna część jadalniana z aneksem kuchennym, w cenie również cały tydzień balia z hydromasażem, grill, plac zabaw (hamak, huśtawki, trampolina, bramki do piłki nożnej), PlayStation, WiFi, parking :)' }
+        ]},
+        { id: 5, title: 'BOŻE CIAŁO!! Wakacje!! Ostatnie wolne pokoje!!', link: 'https://www.olx.pl/d/oferta/boze-cialo-wakacje-ostatnie-wolne-pokoje-CID1816-IDKmdfh.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Wymaga dalszego kontaktu w celu potwierdzenia dostępności i ceny.', capacity: 8, amenities: [], location: 'Zakopane', distance: null, notes: 'Brak potwierdzenia ceny i dostępności w konwersacji.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Witam, proszę o informację ile lat ma dziecko i ile pokoi Państwo potrzebują (ilu osobowe)' },
+            { sender: 'owner', message: 'A najlepiej jakby Pan zadzwonił (ukryte informacje)' }
+        ]},
+        { id: 6, title: 'Domek góralski Wooden Tatra House', link: 'https://www.olx.pl/d/oferta/domek-goralski-wooden-tatra-house-CID1816-ID16iUMx.html', totalPrice: 6230, availability: 'Dostępny', status: 'Cena całkowita i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Zakopane', distance: null, notes: 'Dostępny 26.07-02.08.2025. Całkowita cena 6230 zł.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0)' },
+            { sender: 'owner', message: 'Dzień dobry tak jest dostępny domek w tym terminie , kwota to 6230 zł pozdrawiam serdecznie' }
+        ]},
+        { id: 7, title: 'Zakopane domek 12 osobowy wakacje święta ferie', link: 'https://www.olx.pl/d/oferta/zakopane-domek-12-osobowy-wakacje-swieta-ferie-CID1816-IDL9SkM.html?reason=seller_profile', totalPrice: 5600, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 12, amenities: [], location: 'Zakopane', distance: null, notes: 'Dostępny 26.07-02.08.2025. Cena 800 zł za dobę. Oferuje więcej miejsca niż wymagane.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla ilu osób potrzeba' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Termin wolny 800 zł za dobę' }
+        ]},
+        { id: 8, title: 'Domek k/ Zakopane, widoki na góry, jacuzzi prywatne', link: 'https://www.olx.pl/d/oferta/domek-k-zakopane-widoki-na-gory-jacuzzi-prywatne-CID1816-IDFikla.html', totalPrice: null, availability: 'Częściowo', status: 'Termin nie pokrywa się w pełni. Cena jacuzzi dodatkowo płatna.', capacity: 8, amenities: ['Widoki na góry', 'Prywatne jacuzzi (dodatkowo płatne)'], location: 'Koło Zakopanego', distance: null, notes: 'Dostępny tylko 30.07-03.08.2025. Cena za dobę 850 zł + opłata za jacuzzi.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Witam serdecznie domek mamy wolny w terminie 30.07-03.08 Cena za dobę 850 zł, jeżeli chcieliby Państwo dodatkowo skorzystać z jacuzzi wtedy jest dodatkowa opłata 250 zł za dwa kolejne dni każdy następny po sobie dzień 50 zł - jacuzzi jest prywatne i nagrzewane tylko na życzenie Gości' }
+        ]},
+        { id: 9, title: 'Domek z jacuzzi, balia na wyłączność Termy Chochołów domek Zakopane', link: 'https://www.olx.pl/d/oferta/domek-z-jacuzzi-balia-na-wylacznosc-termy-chocholow-domek-zakopane-CID1816-ID15S2Bp.html', totalPrice: 4200, availability: 'Dostępny', status: 'Pełna dostępność i cena potwierdzona.', capacity: 8, amenities: ['Jacuzzi', 'Balia na wyłączność', 'Klimatyzacja'], location: 'blisko Term Chochołów', distance: 20.5, notes: 'Dostępny 26.07-02.08.2025. Cena 600 zł za dobę. 400m od Term Chochołowskich.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0).' },
+            { sender: 'owner', message: 'Dzień dobry dziękuję za zainteresowanie naszą ofertą mamy wolny domek z 3 sypialniami 600 zł doba domek z klimatyzacja 400 m od term' }
+        ]},
+        { id: 10, title: 'Domki Zakopane domek w górach góry apartamenty noclegi kwatery pokoje', link: 'https://www.olx.pl/d/oferta/domki-zakopane-domek-w-gorach-gory-apartamenty-noclegi-kwatery-pokoje-CID1816-IDJ3aCB.html', totalPrice: null, availability: 'Brak Danych', status: 'Informacje w czacie niejasne, ogłoszenie: 390 zł.', capacity: 8, amenities: ['Grill', 'Plac zabaw', 'Wi-Fi', 'TV', 'Kuchnia', 'Łazienka', 'Parking', 'Akceptacja zwierząt'], location: 'Gliczarów Górny, ul. Fiskowa Dolina 20', distance: 11.4, notes: 'Brak jednoznacznego potwierdzenia ceny i dostępności w czacie.', chatContent: [
+            { sender: 'system', message: 'Brak czytelnej konwersacji w pliku PDF dla tej oferty. Informacje z ogłoszenia: 390 zł.' }
+        ]},
+        { id: 11, title: 'Pokoje noclegi Zakopane, apartamenty', link: 'https://www.olx.pl/d/oferta/pokoje-noclegi-zakopane-apartamenty-CID1816-ID15BqqL.html', totalPrice: null, availability: 'Brak Danych', status: 'Brak konwersacji/danych do potwierdzenia.', capacity: null, amenities: [], location: 'Zakopane', distance: null, notes: '', chatContent: [
+            { sender: 'system', message: 'Brak konwersacji w pliku PDF dla tej oferty.' }
+        ]},
+        { id: 12, title: 'Willa Monia - Zakopane Pardałówka 15-20 min. spacerkiem do Krupówek', link: 'https://www.olx.pl/d/oferta/willa-monia-zakopane-pardalowka-15-20-min-spacerkiem-do-krupowek-CID1816-ID15zggt.html', totalPrice: 7070, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Zakopane Pardałówka', distance: 1.5, notes: 'Cena 130 zł/osoba dorosła, 100 zł/dziecko za dobę. Ok. 15-20 min. spacerkiem do Krupówek.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)? Goście: dorośli (7), dzieci (1) niemowlęta (0)' },
+            { sender: 'owner', message: 'W podanym terminie mamy dostępne 3 pokoje 2 osobowe z łóżkami małżeńskimi + jedno z pojedynczym łóżkiem. Koszt 130 zł od osoby dorosłej za dobę, dziecko do 12 roku życia 100 zł za dobę. W cenie wliczone jest śniadanie w formie szwedzkiego stołu. Zapraszamy!' }
+        ]},
+        { id: 13, title: 'Zakopane, pokoje z łazienką, blisko centrum, Krupówki, do skoczni 300m', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-z-lazienka-blisko-centrum-krupowki-do-skoczni-300m-CID1816-IDYCqId.html', totalPrice: 4480, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Łazienka', 'Halling'], location: 'Zakopane, blisko centrum', distance: 0.3, notes: 'Cena 80 zł/osoba za dobę. Do skoczni 300m, blisko Krupówek.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Witam. Mamy wolne pokoje w tym terminie w cenie 80 zł/osoba za dobę. Dla gości zmotoryzowanych mamy halling przy budynku, w tej cenie. W ofercie wcześniej innych zapytał, chciałbym prosić o użycie bezpośredniego kontaktu (jeśli RODO nie trafi). Pozdrawiam Leszek Medowski' }
+        ]},
+        { id: 14, title: 'WAKACJE-Apartament 2-10os, Blisko Centrum, Dworca PKP,PKS, Widok TATRY', link: 'https://www.olx.pl/d/oferta/wakacje-apartament-2-10os-blisko-centru-m-dworca-pkp-pks-widok-tatry-CID1816-IDQrv4l.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji. Proszono o kontakt telefoniczny.', capacity: '2-10 osób', amenities: ['Widok TATRY'], location: 'Blisko Centrum, Dworca PKP, PKS', distance: null, notes: '', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025-02 sie, 2025 (7 nocy)? Goście: dorośli (7), dzieci (1) niemowlęta (0)' },
+            { sender: 'owner', message: 'Jest wolny proszę dzwonić na 500704655' }
+        ]},
+        { id: 15, title: 'U Sobali - apartament z widokiem oraz pokoje gościnne, Ul. Mrowce 14', link: 'https://www.olx.pl/d/oferta/u-sobali-apartament-z-widokiem-oraz-po-koje-goscinne-ul-mrowce-14-CID1816-IDzQfs5.html', totalPrice: 3500, availability: 'Dostępny', status: 'Cena potwierdzona (dla kombinacji pokoi), dostępność potwierdzona.', capacity: 8, amenities: ['Widok'], location: 'Ul. Mrowce 14', distance: null, notes: 'Oferowane są pokoje 2os (125zł/dobę) i 3os (70zł/dobę). Cena obliczona dla 4 pokoi 2-osobowych.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0).' },
+            { sender: 'owner', message: 'A jakie Pokoje (ilu osobowe) Państwo potrzebują?' },
+            { sender: 'owner', message: 'Dysponujemy w tym terminie pokojem 2 os z łazienka w cenie 125 zł/dobę oraz 2 os z łazienkami w cenie 70 zł/dobę za jeden pokój. Pozdrawiam' }
+        ]},
+        { id: 16, title: 'Wynajem Pokoi Gościnnych "Nowa Grań"', link: 'https://www.olx.pl/d/oferta/wynajem-pokoi-goscinnych-nowa-gran-CID1816-IDWLyHh.html', totalPrice: 3360, availability: 'Częściowo', status: 'Cena i częściowa dostępność potwierdzona.', capacity: 8, amenities: ['Łazienki', 'Balkony z widokiem'], location: null, distance: null, notes: 'Dostępne od 27 lipca. Cena 70 zł/osoba za dobę. (8 osób * 70 zł/osoba * 6 nocy).', chatContent: [
+            { sender: 'user', message: 'Witam. A czy moglibyśmy od 27 lipca? Czy termin jest potrzebny np. od 26?' },
+            { sender: 'owner', message: 'Rozumiem. mamy dostępne pokoje od 27 lipca' },
+            { sender: 'owner', message: 'Od 27 lipca mam pokoje 2 osobowe oraz 3 osobowe, w cenie 70 zł za osobę za dobę. To są pokoje z balkonami i bez balkonów.' },
+            { sender: 'owner', message: 'A od 27 lipca mam również powyżej 2 osobowego i 4 osobowego. Cena 200zł za dobę za balkon, a cena 180 zł/doba za pokój 2 osobowy. Czyli 70 zł/osobę i 180-200 zł za pokój. Pokoje z prywatnymi łazienkami. Balkon z widokiem na góry.' }
+        ]},
+        { id: 17, title: 'Drewniany domek z pięknym widokiem na Gubałówce', link: 'https://www.olx.pl/d/oferta/drewniany-domek-z-pieknym-widokiem-na-gubalowce-CID1816-ID10Rmvt.html', totalPrice: 9600, availability: 'Częściowo', status: 'Cena potwierdzona, termin częściowo pokrywa się (dostępność 26.07-03.08).', capacity: null, amenities: ['Piękny widok'], location: 'Gubałówka', distance: null, notes: 'Cena 1200 zł/dobę. Dostępny 26.07-03.08.2025 (8 nocy).', chatContent: [
+            { sender: 'user', message: 'Witam ten domek jest wolny od 26.7 do 3.8?' },
+            { sender: 'owner', message: 'Ewentualnie w tym terminie mam wolny domek z pięknym widokiem Komikien. Suma 1200 zł/dobę. Zapraszam' }
+        ]},
+        { id: 18, title: 'Nowe domki górlaskie Gubałówka Zakopane (8 osób) z widokiem- wynajem', link: 'https://www.olx.pl/d/oferta/nowe-domki-gorlaskie-gubalowka-zakopa-ne-8-osob-z-widokiem-wynajem-CID1816-IDZWnxE.html', totalPrice: 4900, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Widok'], location: 'Gubałówka', distance: null, notes: 'Cena 700 zł/noc za domek na wyłączność.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Dzień dobry. Ten domek jest wolny w tym terminie. Cena za domek na wyłączność, wynosi w tym terminie 700 zł/noc.' }
+        ]},
+        { id: 19, title: '"Domek u Paulinki" Zakopane Noclegi', link: 'https://www.olx.pl/d/oferta/domek-u-paulinki-zakopane-noclegi-CID1816-IDv9Bfk.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Wymaga potwierdzenia ceny i dostępności. Proszono o kontakt telefoniczny.', capacity: null, amenities: [], location: null, distance: null, notes: '', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Goście: dorośli (7) dzieci (1) niemowlęta (0)' },
+            { sender: 'owner', message: 'Proszę o kontakt telefoniczny pod numerem: 794108159' }
+        ]},
+        { id: 20, title: 'Domek u "Socków" zapraszamy na święta, majówkę i wakacje', link: 'https://www.olx.pl/d/oferta/domek-u-sockow-zapraszamy-na-swieta-majowke-i-wakacje-CID1816-ID13nYkw.html', totalPrice: 4900, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: null, distance: null, notes: 'Cena 700 zł/dobę.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1), niemowlęta (0)' },
+            { sender: 'owner', message: 'Witam serdecznie tak mamy wolny termin cena za dobę to 700zł zapraszamy' }
+        ]},
+        { id: 21, title: 'Prestige Apartamenty Bystra Woda Centrum Zakopane 1-8 osób', link: 'https://www.olx.pl/d/oferta/prestige-apartamenty-bystra-woda-centrum-zakopane-1-8-osob-CID1816-IDqVpRj.html', totalPrice: 5558, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Centrum Zakopane', distance: null, notes: 'Cena 794 zł/doba.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)?' },
+            { sender: 'owner', message: '794 zł/dobę. Pozdrawiamy' }
+        ]},
+        { id: 22, title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy (duplikat)', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', totalPrice: 3920, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona. Duplikat oferty nr 2.', capacity: 8, amenities: ['Piękne widoki', 'Panorama Tatr'], location: 'Murzasichle', distance: 11.4, notes: 'Cena 70 zł od osoby za dobę.', chatContent: [
+            { sender: 'system', message: 'Duplikat konwersacji oferty nr 2.' }
+        ]},
+        { id: 23, title: 'Zakopane - pokoje w górach - widoki na Tatry - Parking', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-w-gorach-widoki-na-tatry-parking-CID1816-IDxTx4h.html', totalPrice: null, availability: 'Brak Danych', status: 'Brak konwersacji/danych do potwierdzenia.', capacity: null, amenities: ['Widoki na Tatry', 'Parking'], location: 'Zakopane (w górach)', distance: null, notes: '', chatContent: [
+            { sender: 'system', message: 'Brak konwersacji w pliku PDF dla tej oferty.' }
+        ]},
+        { id: 24, title: 'Zapraszamy do Villa Baja wolne pokoje 3km centrum', link: 'https://www.olx.pl/d/oferta/zapraszamy-do-villa-baja-wolne-pokoje-3km-centrum-CID1816-IDNv0DD.html', totalPrice: 4760, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: '3km od centrum', distance: 3, notes: 'Cena 85 zł/osoba/dobę.', chatContent: [
+            { sender: 'user', message: 'Na 7 nocy chodzi?' },
+            { sender: 'user', message: 'Posiadamy wolne pokoje Swietny 3 osobowe oraz jeden 1 osobowy' },
+            { sender: 'user', message: 'W jakiej cenie?' },
+            { sender: 'user', message: 'Z (ilustracją) obiadem?' },
+            { sender: 'owner', message: '85 zł/osobę. Za nocleg.' }
+        ]},
+        { id: 25, title: 'Apartamenty Zakopane Najbliższe Szlaki 350m ! WOLNE ! OBIADY 25ZŁ', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-najblizsze-szlaki-350m-wolne-obiady-25zlCID1816-IDjpzbi.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność tylko 27-31 lipca. Oferta dla maks. 4 osób. Nieodpowiednie dla 8 osób.', capacity: 4, amenities: ['Obiady 25zł'], location: 'Najbliższe Szlaki 350m', distance: 0.35, notes: 'Nieodpowiednie dla 8 osób.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)? Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)?' },
+            { sender: 'owner', message: 'Witam tak. 27/31 doba 180 zł. Pozdrawiam Damian Apartamenty Dwa Niedźwiedzie. Jest to cena za apartament.' },
+            { sender: 'owner', message: 'Przepraszam zapomniałem dopisać za 180 zł po 27/31 doba. Lub niżej 113 po 300zł doba. Apartamenty są dla maksymalnie 4 osób.' }
+        ]},
+        { id: 26, title: 'Apartament w górach z widokiem na góry blisko term i szlaków dla rodzin', link: 'https://www.olx.pl/d/oferta/apartament-w-gorach-z-widokiem-na-gory-bisko-term-i-szlakow-dla-rodzin-CID1816-ID16aFoq.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak jednoznacznej ceny i dostępności dla grupy 8-osobowej. Informacje w konwersacji są niejasne i sprzeczne.', capacity: 8, amenities: ['Widok na góry', 'Blisko term i szlaków', 'Basen', 'Jacuzzi'], location: 'W górach', distance: null, notes: 'Informacje o cenie i dostępności w konwersacji są niejasne i sprzeczne.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Pokój 4 osobowy standard trzylatek. balkon. Widok z łazienki na Tatry. Zachodzony w cenie 90 zł/osoba/noc. dziecko, poniżej lat 10- ceny w cenie 63 zł/noc.' },
+            { sender: 'owner', message: 'Gościnny dom ma 8 pokoi z aneksem kuchennym, łazienką. Julianym łóżkiem. Własne balkonami. Bezpośredni widok na Tatry. Wi-Fi. parking. Tatry w cenie 12.' },
+            { sender: 'owner', message: 'Dresy. noc. dostępność: 10-20 (w cenie 8 zł/noc).' }
+        ]},
+        { id: 27, title: 'Zakopane!!! Pokoje, noclegi w Centrum!!! Boże Ciało, WAKACJE 2025', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-noclegi-w-centrum-boze-cialo-wakacje-2025-CID1816-ID1foBh.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności. Proszono o kontakt telefoniczny.', capacity: null, amenities: [], location: 'Centrum Zakopanego', distance: null, notes: '', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 02 sie 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Zapraszam do kontaktu telefonicznego (603444718) Mam inne zajęcie. Już odpowiadam na wiadomość!' }
+        ]},
+        { id: 28, title: 'Dom na wyłączność jacuzzi ,święta', link: 'https://www.olx.pl/d/oferta/dom-na-wylacznosc-jacuzzi-swieta-CID1816-ID12cf5V.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność od 27 lipca. Cena niepotwierdzona.', capacity: null, amenities: ['Jacuzzi'], location: null, distance: null, notes: 'Brak ceny dla terminu. Możliwe wynajęcie pokoi od 26 lipca.', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip 2025 - 2 sie 2025 (7 nocy)? Goście: dorośli (7), dzieci (1) niemowlęta (0).' },
+            { sender: 'owner', message: 'Domek wolny od 27 lipca ewentualnie pokoje od 26 lipca są dostępne.' },
+            { sender: 'user', message: 'Jaka by była cena za pokoje 102 dwa dwuosobowe i jeden czteroosobowy. Jaka byłaby cena za dom na wyłączność? (27-02.08)' }
+        ]},
+        { id: 29, title: 'Domki pod lasem WYNAJEM Domek', link: 'https://www.olx.pl/d/oferta/domki-pod-lasem-wynajem-domek-CID1816-IDwnlvP.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji. Brak szczegółów.', capacity: null, amenities: [], location: 'Pod lasem', distance: null, notes: '', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)? Goście: dorośli (7), dzieci (1) niemowlęta (0)' },
+            { sender: 'owner', message: 'Witam mam wolne zapraszam' },
+            { sender: 'user', message: 'W jakiej cenie?' }
+        ]},
+        { id: 30, title: 'Domek w centrum Zakopanego, ul Tetmajera, Tatry', link: 'https://www.olx.pl/d/oferta/domek-w-centrum-zakopanego-ul-tetmajera-tatry-CID1816-IDGdv-s9.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji. Wymaga dalszego kontaktu.', capacity: null, amenities: [], location: 'Centrum Zakopanego, ul. Tetmajera', distance: null, notes: '', chatContent: [
+            { sender: 'user', message: 'Czy wynajem jest możliwy w dniach 26 lip, 2025 - 02 sie, 2025 (7 nocy)?' },
+            { sender: 'user', message: 'Dla 7 dorosłych i jednego dziecka' },
+            { sender: 'owner', message: 'Mamy jeszcze wolny termin' },
+            { sender: 'user', message: 'W jakiej cenie?' }
+        ]}
     ];
 
     const offersGrid = document.getElementById('offers-grid');
@@ -198,6 +392,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortBy = document.getElementById('sort-by');
 
     let activeFilters = [];
+
+    // Modal elements for chat
+    const chatModal = document.getElementById('chatModal');
+    const chatModalTitle = document.getElementById('chatModalTitle');
+    const chatMessagesContainer = document.getElementById('chatMessages');
+    const modalClose = document.getElementsByClassName('modal-close')[0];
 
     const getStatusColor = (availability) => {
         switch (availability) {
@@ -259,6 +459,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="p-6 bg-gray-50 border-t border-gray-200">
+                    <button class="w-full text-center block bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors open-chat-modal-btn" data-offer-id="${offer.id}">
+                        Pokaż Konwersację
+                    </button>
+                </div>
+                <div class="p-6 bg-gray-50 border-t border-gray-200">
                     <a href="${offer.link}" target="_blank" rel="noopener noreferrer" class="w-full text-center block bg-[#4A7856] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#2F5233] transition-colors">
                         Zobacz Ofertę na OLX
                     </a>
@@ -266,7 +471,36 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             offersGrid.appendChild(card);
         });
+
+        // Add event listeners for chat modal buttons
+        document.querySelectorAll('.open-chat-modal-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const offerId = parseInt(this.dataset.offerId);
+                const offer = accommodationData.find(o => o.id === offerId);
+                if (offer && offer.chatContent) {
+                    chatModalTitle.textContent = `Konwersacja dla: ${offer.title}`;
+                    chatMessagesContainer.innerHTML = ''; // Clear previous messages
+                    offer.chatContent.forEach(chatMsg => {
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = `chat-message ${chatMsg.sender === 'user' ? 'chat-user' : 'chat-owner'}`;
+                        msgDiv.textContent = chatMsg.message;
+                        chatMessagesContainer.appendChild(msgDiv);
+                    });
+                    chatModal.style.display = 'flex'; // Show modal
+                }
+            });
+        });
     };
+
+    // Close the modal when clicking on the close button or outside the content
+    modalClose.addEventListener('click', () => {
+        chatModal.style.display = 'none';
+    });
+    chatModal.addEventListener('click', (e) => {
+        if (e.target === chatModal) {
+            chatModal.style.display = 'none';
+        }
+    });
 
     availabilityFilter.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
