@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktywne Porównanie Ofert Noclegowych - Zakopane</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Deep Forest Green -->
+    <!-- Application Structure Plan: A single-page dashboard designed for decision-making. The structure prioritizes user interaction over mirroring the source report's linear flow. It consists of: 1. A global navigation bar for quick scrolling. 2. A powerful control panel with sorting and filtering options (by price, distance, amenities, availability), which is the primary interaction hub. 3. An interactive grid of "offer cards" that dynamically updates based on user selections, presenting key information concisely. 4. A visualization section with bar charts for at-a-glance comparison of price and location trade-offs. 5. A final summary and recommendations section to guide the user's choice. This task-oriented design empowers the user to explore the data according to their personal priorities (e.g., "show me the cheapest available options with a jacuzzi"), making the complex data from the report easily digestible and comparable. -->
+    <!-- Visualization & Content Choices: The core of the application is the transformation of static report entries into interactive elements. Report Info: Each accommodation offer. Goal: Compare options based on multiple criteria. Viz/Presentation Method: An interactive card grid (HTML/Tailwind/JS). Interaction: Users can filter and sort the cards. Justification: Cards are more flexible and mobile-friendly than a static table, allowing for a clearer presentation of varied information. Report Info: Price and Distance data. Goal: Provide a high-level visual summary of key trade-offs. Viz/Presentation Method: Two separate bar charts (Chart.js/Canvas). Interaction: Tooltips on hover provide exact values. Justification: Bar charts are ideal for comparing discrete values across different categories, making the cost-vs-location dilemma immediately apparent. All interactions are handled by vanilla JavaScript, ensuring a lightweight and fast experience. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8; /* Warm off-white */
+            color: #383838;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 450px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s;
+        }
+        .nav-link:hover {
+            color: #2F5233; /* Dark Green */
+        }
+        .filter-btn, .sort-select {
+            transition: all 0.3s;
+        }
+        .filter-btn.active {
+            background-color: #4A7856; /* Green */
+            color: #ffffff;
+            border-color: #4A7856;
+        }
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-[#2F5233]">Noclegi Zakopane 2025</h1>
+            <div class="hidden md:flex space-x-6 text-gray-600 font-medium">
+                <a href="#porownanie" class="nav-link">Porównanie</a>
+                <a href="#wizualizacje" class="nav-link">Wykresy</a>
+                <a href="#podsumowanie" class="nav-link">Podsumowanie</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+        <section id="intro" class="text-center mb-12">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">Znajdź Idealny Nocleg na Wakacje</h2>
+            <p class="max-w-3xl mx-auto text-gray-600">
+                Ta interaktywna strona pomoże Ci porównać zweryfikowane oferty noclegowe w Zakopanem i okolicach na termin 26.07 - 02.08.2025 dla 8 osób. Użyj filtrów i sortowania, aby znaleźć opcję najlepiej dopasowaną do Twoich potrzeb. Dane pochodzą z analizy ofert i rozmów z właścicielami.
+            </p>
+        </section>
+
+        <section id="porownanie" class="scroll-mt-24">
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-10">
+                <h3 class="text-2xl font-bold mb-6">Filtruj i Sortuj Oferty</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold mb-2 text-gray-700">Filtruj wg dostępności:</label>
+                        <div id="availability-filter" class="flex flex-wrap gap-2">
+                            <button data-filter="Dostępny" class="filter-btn text-sm font-medium py-2 px-4 rounded-full border border-gray-300 bg-white">✅ W pełni dostępne</button>
+                            <button data-filter="Częściowo" class="filter-btn text-sm font-medium py-2 px-4 rounded-full border border-gray-300 bg-white">⚠️ Częściowo dostępne</button>
+                            <button data-filter="Wymaga Potwierdzenia" class="filter-btn text-sm font-medium py-2 px-4 rounded-full border border-gray-300 bg-white">❓ Wymaga potwierdzenia</button>
+                            <button data-filter="Brak Danych" class="filter-btn text-sm font-medium py-2 px-4 rounded-full border border-gray-300 bg-white">⛔ Brak Danych</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="sort-by" class="block text-sm font-semibold mb-2 text-gray-700">Sortuj według:</label>
+                        <select id="sort-by" class="sort-select w-full p-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-[#4A7856] focus:border-[#4A7856] outline-none">
+                            <option value="price_asc">Cena: od najniższej</option>
+                            <option value="price_desc">Cena: od najwyższej</option>
+                            <option value="dist_asc">Odległość: od najbliższej</option>
+                            <option value="dist_desc">Odległość: od najdalszej</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="offers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            </div>
+        </section>
+
+        <section id="wizualizacje" class="mt-16 scroll-mt-24">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Wizualne Porównanie Ofert</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                    <h3 class="text-xl font-bold text-center mb-4">Porównanie Ceny Całkowitej (7 nocy)</h3>
+                    <p class="text-center text-sm text-gray-500 mb-6">Dotyczy ofert z potwierdzoną ceną.</p>
+                    <div class="chart-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                    <h3 class="text-xl font-bold text-center mb-4">Szacowana Odległość od Krupówek</h3>
+                     <p class="text-center text-sm text-gray-500 mb-6">Dotyczy ofert ze znaną lokalizacją.</p>
+                    <div class="chart-container">
+                        <canvas id="distanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="podsumowanie" class="mt-16 scroll-mt-24">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Podsumowanie i Rekomendacje</h2>
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                 <div class="space-y-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-[#2F5233]">Kluczowe Wnioski</h3>
+                        <p class="text-gray-600">Analiza ofert pokazuje, że kluczowe jest bezpośrednie potwierdzanie ceny i dostępności, ponieważ informacje w ogłoszeniach często są nieaktualne. Wybór sprowadza się do kompromisu między ceną, lokalizacją (i kosztami dojazdów) a dostępnymi udogodnieniami, które mogą znacząco podnieść komfort pobytu.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-[#2F5233]">Najbardziej Obiecujące Oferty</h3>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                           <li><span class="font-semibold">Domek z jacuzzi blisko Term Chochołowskich:</span> Najlepszy stosunek ceny do udogodnień (jacuzzi, klimatyzacja). Idealny dla grupy ceniącej relaks, nawet kosztem dojazdów do centrum Zakopanego.</li>
+                           <li><span class="font-semibold">Domek 12-osobowy:</span> Oferuje najwięcej przestrzeni i komfortu dla 8-osobowej grupy w dobrej cenie, co może być dużą zaletą podczas dłuższego pobytu.</li>
+                           <li><span class="font-semibold">Domek 8-osobowy w Chochołowie:</span> Solidna opcja z w pełni potwierdzoną dostępnością i ceną, dobra jako punkt wyjścia do negocjacji lub pewny wybór, jeśli inne opcje zawiodą.</li>
+                           <li><span class="font-semibold">Apartamenty Jaworowe Izby z balią:</span> Potwierdzona cena i atrakcyjne udogodnienia, choć wymaga rozwiązania kwestii 26 lipca.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-[#2F5233]">Praktyczne Porady</h3>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                           <li><strong>Zawsze potwierdzaj cenę całkowitą:</strong> Dopytaj o wszystkie dodatkowe opłaty (klimatyczna, za media, sprzątanie).</li>
+                           <li><strong>Weryfikuj dokładną lokalizację:</strong> Użyj mapy, aby ocenić realny czas i koszt dojazdów do Krupówek i innych atrakcji.</li>
+                           <li><strong>Określ priorytety grupy:</strong> Zdecycydujcie, co jest ważniejsze – bliskość centrum, cisza i widoki, czy dostęp do basenu/jacuzzi.</li>
+                        </ul>
+                    </div>
+                 </div>
+            </div>
+        </section>
+
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const accommodationData = [
+        { id: 1, title: 'Domek 8-osobowy CHOCHOŁÓW', link: 'https://www.olx.pl/d/oferta/domek-zakopane-8osobowy-wynajem-chochol-CID1816-IDY2Pra.html', totalPrice: 5600, availability: 'Dostępny', status: 'Pełna dostępność i cena potwierdzona.', capacity: 8, amenities: [], location: 'Chochołów', distance: 20.5, notes: 'Dostępny w terminie 25.07-02.08.2025 dla 7 dorosłych i 1 dziecka.' },
+        { id: 2, title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', totalPrice: 3920, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Piękne widoki', 'Panorama Tatr'], location: 'Murzasichle', distance: 11.4, notes: 'Cena 70 zł od osoby za dobę. W drugim budynku.' },
+        { id: 3, title: 'Apartamenty z BASENEM, JACUZZI, sauna i parking - w cenie!', link: 'https://www.olx.pl/d/oferta/wakacje-basen-jacuzzi-sauna-i-parking-w-cenie-CID1816-IDvrPqn.html', totalPrice: 3850, availability: 'Częściowo', status: 'Cena potwierdzona, termin nie pokrywa się w pełni.', capacity: 8, amenities: ['Basen', 'Siłownia', 'Jacuzzi', 'Plac zabaw', 'Sauna', 'Grota solna', 'Parking'], location: 'Zakopane', distance: null, notes: 'Dostępne tylko 27.07-01.08.2025. Cena 550 zł za dobę.' },
+        { id: 4, title: 'Apartamenty Jaworowe Izby z balią z hydromasażem', link: 'https://www.olx.pl/d/oferta/apartamenty-jaworowe-izby-z-balia-z-hydromasazem-CID1816-ID15UskW.html', totalPrice: 3100, availability: 'Częściowo', status: 'Cena potwierdzona, 26.07 zarezerwowany.', capacity: 8, amenities: ['Balia z hydromasażem', 'Grill', 'Plac zabaw', 'Hamak', 'Huśtawki', 'Trampolina', 'Bramki do piłki nożnej', 'PlayStation', 'WiFi', 'Parking'], location: 'Zakopane', distance: null, notes: 'Dostępny od 27.07 do 02.08.2025. Całkowita cena 3100 zł.' },
+        { id: 5, title: 'BOŻE CIAŁO!! Wakacje!! Ostatnie wolne pokoje!!', link: 'https://www.olx.pl/d/oferta/boze-cialo-wakacje-ostatnie-wolne-pokoje-CID1816-IDKmdfh.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Wymaga dalszego kontaktu w celu potwierdzenia dostępności i ceny.', capacity: 8, amenities: [], location: 'Zakopane', distance: null, notes: 'Brak potwierdzenia ceny i dostępności w konwersacji.' },
+        { id: 6, title: 'Domek góralski Wooden Tatra House', link: 'https://www.olx.pl/d/oferta/domek-goralski-wooden-tatra-house-CID1816-ID16iUMx.html', totalPrice: 6230, availability: 'Dostępny', status: 'Cena całkowita i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Zakopane', distance: null, notes: 'Dostępny 26.07-02.08.2025. Całkowita cena 6230 zł.' },
+        { id: 7, title: 'Zakopane domek 12 osobowy wakacje święta ferie', link: 'https://www.olx.pl/d/oferta/zakopane-domek-12-osobowy-wakacje-swieta-ferie-CID1816-IDL9SkM.html?reason=seller_profile', totalPrice: 5600, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 12, amenities: [], location: 'Zakopane', distance: null, notes: 'Dostępny 26.07-02.08.2025. Cena 800 zł za dobę. Oferuje więcej miejsca niż wymagane.' },
+        { id: 8, title: 'Domek k/ Zakopane, widoki na góry, jacuzzi prywatne', link: 'https://www.olx.pl/d/oferta/domek-k-zakopane-widoki-na-gory-jacuzzi-prywatne-CID1816-IDFikla.html', totalPrice: null, availability: 'Częściowo', status: 'Termin nie pokrywa się w pełni. Cena jacuzzi dodatkowo płatna.', capacity: 8, amenities: ['Widoki na góry', 'Prywatne jacuzzi (dodatkowo płatne)'], location: 'Koło Zakopanego', distance: null, notes: 'Dostępny tylko 30.07-03.08.2025. Cena za dobę 850 zł + opłata za jacuzzi.' },
+        { id: 9, title: 'Domek z jacuzzi, balia na wyłączność Termy Chochołów domek Zakopane', link: 'https://www.olx.pl/d/oferta/domek-z-jacuzzi-balia-na-wylacznosc-termy-chocholow-domek-zakopane-CID1816-ID15S2Bp.html', totalPrice: 4200, availability: 'Dostępny', status: 'Pełna dostępność i cena potwierdzona.', capacity: 8, amenities: ['Jacuzzi', 'Balia na wyłączność', 'Klimatyzacja'], location: 'blisko Term Chochołów', distance: 20.5, notes: 'Dostępny 26.07-02.08.2025. Cena 600 zł za dobę. 400m od Term Chochołowskich.' },
+        { id: 10, title: 'Domki Zakopane domek w górach góry apartamenty noclegi kwatery pokoje', link: 'https://www.olx.pl/d/oferta/domki-zakopane-domek-w-gorach-gory-apartamenty-noclegi-kwatery-pokoje-CID1816-IDJ3aCB.html', totalPrice: null, availability: 'Brak Danych', status: 'Informacje w czacie niejasne, ogłoszenie: 390 zł.', capacity: 8, amenities: ['Grill', 'Plac zabaw', 'Wi-Fi', 'TV', 'Kuchnia', 'Łazienka', 'Parking', 'Akceptacja zwierząt'], location: 'Gliczarów Górny, ul. Fiskowa Dolina 20', distance: 11.4, notes: 'Brak jednoznacznego potwierdzenia ceny i dostępności w czacie.' },
+        { id: 11, title: 'Pokoje noclegi Zakopane, apartamenty', link: 'https://www.olx.pl/d/oferta/pokoje-noclegi-zakopane-apartamenty-CID1816-ID15BqqL.html', totalPrice: null, availability: 'Brak Danych', status: 'Brak konwersacji/danych do potwierdzenia.', capacity: null, amenities: [], location: 'Zakopane', distance: null, notes: '' },
+        { id: 12, title: 'Willa Monia - Zakopane Pardałówka 15-20 min. spacerkiem do Krupówek', link: 'https://www.olx.pl/d/oferta/willa-monia-zakopane-pardalowka-15-20-min-spacerkiem-do-krupowek-CID1816-ID15zggt.html', totalPrice: 7070, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Zakopane Pardałówka', distance: 1.5, notes: 'Cena 130 zł/osoba dorosła, 100 zł/dziecko za dobę. Ok. 15-20 min. spacerkiem do Krupówek.' },
+        { id: 13, title: 'Zakopane, pokoje z łazienką, blisko centrum, Krupówki, do skoczni 300m', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-z-lazienka-blisko-centrum-krupowki-do-skoczni-300m-CID1816-IDYCqId.html', totalPrice: 4480, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Łazienka', 'Halling'], location: 'Zakopane, blisko centrum', distance: 0.3, notes: 'Cena 80 zł/osoba za dobę. Do skoczni 300m, blisko Krupówek.' },
+        { id: 14, title: 'WAKACJE-Apartament 2-10os, Blisko Centrum, Dworca PKP,PKS, Widok TATRY', link: 'https://www.olx.pl/d/oferta/wakacje-apartament-2-10os-blisko-centru-m-dworca-pkp-pks-widok-tatry-CID1816-IDQrv4l.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji. Proszono o kontakt telefoniczny.', capacity: '2-10 osób', amenities: ['Widok TATRY'], location: 'Blisko Centrum, Dworca PKP, PKS', distance: null, notes: '' },
+        { id: 15, title: 'U Sobali - apartament z widokiem oraz pokoje gościnne, Ul. Mrowce 14', link: 'https://www.olx.pl/d/oferta/u-sobali-apartament-z-widokiem-oraz-po-koje-goscinne-ul-mrowce-14-CID1816-IDzQfs5.html', totalPrice: 3500, availability: 'Dostępny', status: 'Cena potwierdzona (dla kombinacji pokoi), dostępność potwierdzona.', capacity: 8, amenities: ['Widok'], location: 'Ul. Mrowce 14', distance: null, notes: 'Oferowane są pokoje 2os (125zł/dobę) i 3os (70zł/dobę). Cena obliczona dla 4 pokoi 2-osobowych.' },
+        { id: 16, title: 'Wynajem Pokoi Gościnnych "Nowa Grań"', link: 'https://www.olx.pl/d/oferta/wynajem-pokoi-goscinnych-nowa-gran-CID1816-IDWLyHh.html', totalPrice: 4320, availability: 'Częściowo', status: 'Cena i częściowa dostępność potwierdzona.', capacity: 8, amenities: ['Łazienki', 'Balkony z widokiem'], location: null, distance: null, notes: 'Dostępne od 27 lipca. Cena 90 zł/osoba za dobę.' },
+        { id: 17, title: 'Drewniany domek z pięknym widokiem na Gubałówce', link: 'https://www.olx.pl/d/oferta/drewniany-domek-z-pieknym-widokiem-na-gubalowce-CID1816-ID10Rmvt.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność tylko 26.07-31.07. Cena niejasna dla tej oferty.', capacity: null, amenities: ['Piękny widok'], location: 'Gubałówka', distance: null, notes: '' },
+        { id: 18, title: 'Nowe domki górlaskie Gubałówka Zakopane (8 osób) z widokiem- wynajem', link: 'https://www.olx.pl/d/oferta/nowe-domki-gorlaskie-gubalowka-zakopa-ne-8-osob-z-widokiem-wynajem-CID1816-IDZWnxE.html', totalPrice: 4900, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: ['Widok'], location: 'Gubałówka', distance: null, notes: 'Cena 700 zł/noc za domek na wyłączność.' },
+        { id: 19, title: '"Domek u Paulinki" Zakopane Noclegi', link: 'https://www.olx.pl/d/oferta/domek-u-paulinki-zakopane-noclegi-CID1816-IDv9Bfk.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności. Proszono o kontakt telefoniczny.', capacity: null, amenities: [], location: null, distance: null, notes: '' },
+        { id: 20, title: 'Domek u "Socków" zapraszamy na święta, majówkę i wakacje', link: 'https://www.olx.pl/d/oferta/domek-u-sockow-zapraszamy-na-swieta-majowke-i-wakacje-CID1816-ID13nYkw.html', totalPrice: 4900, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: null, distance: null, notes: 'Cena 700 zł/dobę.' },
+        { id: 21, title: 'Prestige Apartamenty Bystra Woda Centrum Zakopane 1-8 osób', link: 'https://www.olx.pl/d/oferta/prestige-apartamenty-bystra-woda-centrum-zakopane-1-8-osob-CID1816-IDqVpRj.html', totalPrice: 5558, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: 'Centrum Zakopane', distance: null, notes: 'Cena 794 zł/doba.' },
+        { id: 22, title: 'Apartamenty Zakopane Wakacje Sierpień Weekendy (duplikat)', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-wakacje-sierpien-weekendy-CID1816-ID16307m.html', totalPrice: 3920, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona. Duplikat oferty nr 2.', capacity: 8, amenities: ['Piękne widoki', 'Panorama Tatr'], location: 'Murzasichle', distance: 11.4, notes: 'Cena 70 zł od osoby za dobę.' },
+        { id: 23, title: 'Zakopane - pokoje w górach - widoki na Tatry - Parking', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-w-gorach-widoki-na-tatry-parking-CID1816-IDxTx4h.html', totalPrice: null, availability: 'Brak Danych', status: 'Brak konwersacji/danych do potwierdzenia.', capacity: null, amenities: ['Widoki na Tatry', 'Parking'], location: 'Zakopane (w górach)', distance: null, notes: '' },
+        { id: 24, title: 'Zapraszamy do Villa Baja wolne pokoje 3km centrum', link: 'https://www.olx.pl/d/oferta/zapraszamy-do-villa-baja-wolne-pokoje-3km-centrum-CID1816-IDNv0DD.html', totalPrice: 4760, availability: 'Dostępny', status: 'Cena i dostępność potwierdzona.', capacity: 8, amenities: [], location: '3km od centrum', distance: 3, notes: 'Cena 85 zł/osoba/dobę.' },
+        { id: 25, title: 'Apartamenty Zakopane Najbliższe Szlaki 350m ! WOLNE ! OBIADY 25ZŁ', link: 'https://www.olx.pl/d/oferta/apartamenty-zakopane-najblizsze-szlaki-350m-wolne-obiady-25zlCID1816-IDjpzbi.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność tylko 27-31 lipca. Oferta dla maks. 4 osób.', capacity: 4, amenities: ['Obiady 25zł'], location: 'Najbliższe Szlaki 350m', distance: 0.35, notes: 'Nieodpowiednie dla 8 osób.' },
+        { id: 26, title: 'Apartament w górach z widokiem na góry blisko term i szlaków dla rodzin', link: 'https://www.olx.pl/d/oferta/apartament-w-gorach-z-widokiem-na-gory-bisko-term-i-szlakow-dla-rodzin-CID1816-ID16aFoq.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak jednoznacznej ceny i dostępności dla grupy 8-osobowej.', capacity: 8, amenities: ['Widok na góry', 'Blisko term i szlaków', 'Basen', 'Jacuzzi'], location: 'W górach', distance: null, notes: 'Informacje o cenie i dostępności w konwersacji są niejasne i sprzeczne.' },
+        { id: 27, title: 'Zakopane!!! Pokoje, noclegi w Centrum!!! Boże Ciało, WAKACJE 2025', link: 'https://www.olx.pl/d/oferta/zakopane-pokoje-noclegi-w-centrum-boze-cialo-wakacje-2025-CID1816-ID1foBh.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności. Proszono o kontakt telefoniczny.', capacity: null, amenities: [], location: 'Centrum Zakopanego', distance: null, notes: '' },
+        { id: 28, title: 'Dom na wyłączność jacuzzi ,święta', link: 'https://www.olx.pl/d/oferta/dom-na-wylacznosc-jacuzzi-swieta-CID1816-ID12cf5V.html', totalPrice: null, availability: 'Częściowo', status: 'Dostępność od 27 lipca. Cena niepotwierdzona.', capacity: null, amenities: ['Jacuzzi'], location: null, distance: null, notes: 'Brak ceny dla terminu. Możliwe wynajęcie pokoi od 26 lipca.' },
+        { id: 29, title: 'Domki pod lasem WYNAJEM Domek', link: 'https://www.olx.pl/d/oferta/domki-pod-lasem-wynajem-domek-CID1816-IDwnlvP.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny i dostępności.', capacity: null, amenities: [], location: 'Pod lasem', distance: null, notes: '' },
+        { id: 30, title: 'Domek w centrum Zakopanego, ul Tetmajera, Tatry', link: 'https://www.olx.pl/d/oferta/domek-w-centrum-zakopanego-ul-tetmajera-tatry-CID1816-IDGdv-s9.html', totalPrice: null, availability: 'Wymaga Potwierdzenia', status: 'Brak potwierdzenia ceny w konwersacji.', capacity: null, amenities: [], location: 'Centrum Zakopanego, ul. Tetmajera', distance: null, notes: '' }
+    ];
+
+    const offersGrid = document.getElementById('offers-grid');
+    const availabilityFilter = document.getElementById('availability-filter');
+    const sortBy = document.getElementById('sort-by');
+
+    let activeFilters = [];
+
+    const getStatusColor = (availability) => {
+        switch (availability) {
+            case 'Dostępny': return 'text-green-600 bg-green-100';
+            case 'Częściowo': return 'text-yellow-600 bg-yellow-100';
+            case 'Wymaga Potwierdzenia': return 'text-blue-600 bg-blue-100';
+            case 'Brak Danych': return 'text-red-600 bg-red-100';
+            default: return 'text-gray-600 bg-gray-100';
+        }
+    };
+
+    const renderOffers = () => {
+        let filteredData = [...accommodationData];
+
+        if (activeFilters.length > 0) {
+            filteredData = filteredData.filter(offer => activeFilters.includes(offer.availability));
+        }
+
+        const sortValue = sortBy.value;
+        filteredData.sort((a, b) => {
+            switch (sortValue) {
+                case 'price_asc':
+                    return (a.totalPrice || Infinity) - (b.totalPrice || Infinity);
+                case 'price_desc':
+                    return (b.totalPrice || -Infinity) - (a.totalPrice || -Infinity);
+                case 'dist_asc':
+                    return (a.distance || Infinity) - (b.distance || Infinity);
+                case 'dist_desc':
+                    return (b.distance || -Infinity) - (a.distance || -Infinity);
+                default:
+                    return 0;
+            }
+        });
+        
+        offersGrid.innerHTML = '';
+        if (filteredData.length === 0) {
+             offersGrid.innerHTML = `<p class="text-center col-span-full text-gray-500">Brak ofert spełniających wybrane kryteria.</p>`;
+             return;
+        }
+        
+        filteredData.forEach(offer => {
+            const card = document.createElement('div');
+            card.className = 'card bg-white rounded-2xl shadow-md overflow-hidden flex flex-col';
+            card.innerHTML = `
+                <div class="p-6 flex-grow">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold py-1 px-3 rounded-full ${getStatusColor(offer.availability)}">${offer.availability}</span>
+                        <p class="text-2xl font-bold text-[#2F5233]">${offer.totalPrice ? `${offer.totalPrice} zł` : 'Cena ?'}</p>
+                    </div>
+                    <h4 class="text-lg font-bold mb-2 h-14">${offer.title}</h4>
+                    <div class="text-sm text-gray-500 mb-4 space-y-1">
+                        <p>📍 Lokalizacja: <span class="font-medium text-gray-700">${offer.location || 'Nieznana'}</span></p>
+                        <p>🚗 Do Krupówek: <span class="font-medium text-gray-700">${offer.distance !== null ? `~${offer.distance} km` : 'Nieznana'}</span></p>
+                        <p>👥 Pojemność: <span class="font-medium text-gray-700">${offer.capacity ? `${offer.capacity} osób` : 'Nieznana'}</span></p>
+                    </div>
+                     <div class="text-sm text-gray-600 mb-4">
+                        <p><span class="font-semibold">Status:</span> ${offer.status}</p>
+                        ${offer.notes ? `<p class="mt-1"><span class="font-semibold">Notatki:</span> ${offer.notes}</p>` : ''}
+                    </div>
+                </div>
+                <div class="p-6 bg-gray-50 border-t border-gray-200">
+                    <a href="${offer.link}" target="_blank" rel="noopener noreferrer" class="w-full text-center block bg-[#4A7856] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#2F5233] transition-colors">
+                        Zobacz Ofertę na OLX
+                    </a>
+                </div>
+            `;
+            offersGrid.appendChild(card);
+        });
+    };
+
+    availabilityFilter.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            const filter = e.target.dataset.filter;
+            e.target.classList.toggle('active');
+            if (activeFilters.includes(filter)) {
+                activeFilters = activeFilters.filter(f => f !== filter);
+            } else {
+                activeFilters.push(filter);
+            }
+            renderOffers();
+        }
+    });
+
+    sortBy.addEventListener('change', renderOffers);
+
+    const renderCharts = () => {
+        // Clear previous charts if they exist
+        const priceChartCanvas = document.getElementById('priceChart');
+        const distanceChartCanvas = document.getElementById('distanceChart');
+        if (priceChartCanvas.chart) {
+            priceChartCanvas.chart.destroy();
+        }
+        if (distanceChartCanvas.chart) {
+            distanceChartCanvas.chart.destroy();
+        }
+
+        const confirmedPriceData = accommodationData.filter(d => d.totalPrice && d.availability === 'Dostępny');
+        const knownDistanceData = accommodationData.filter(d => d.distance !== null && !isNaN(d.distance));
+        
+        priceChartCanvas.chart = new Chart(priceChartCanvas, {
+            type: 'bar',
+            data: {
+                labels: confirmedPriceData.map(d => d.title.substring(0,25) + (d.title.length > 25 ? '...' : '')),
+                datasets: [{
+                    label: 'Cena całkowita (zł)',
+                    data: confirmedPriceData.map(d => d.totalPrice),
+                    backgroundColor: '#4A7856',
+                    borderColor: '#2F5233',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        distanceChartCanvas.chart = new Chart(distanceChartCanvas, {
+            type: 'bar',
+            data: {
+                labels: knownDistanceData.map(d => d.title.substring(0,25) + (d.title.length > 25 ? '...' : '')),
+                datasets: [{
+                    label: 'Odległość od Krupówek (km)',
+                    data: knownDistanceData.map(d => d.distance),
+                    backgroundColor: '#A2B8A6',
+                    borderColor: '#6E8B74',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                },
+                 plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    };
+
+    renderOffers();
+    renderCharts();
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+});
+</script>
+
+</body>
+</html>
